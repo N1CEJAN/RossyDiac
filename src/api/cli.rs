@@ -11,27 +11,31 @@ use crate::business::handler::{convert_to_dtp, convert_to_msg};
 struct Cli {
     #[command(subcommand)]
     command: Command,
-    /// The file to convert
-    #[arg(short, long)]
-    path_to_file: String,
 }
 
 #[derive(Subcommand, Debug)]
 enum Command {
     /// Converts a MSG file to a DTP file
-    ConvertToDtp,
+    ConvertToDtp {
+        /// The file to convert
+        #[arg(short = 'f', long = "file")]
+        path_to_file: String,
+    },
     /// Converts a DTP file to a MSG file
-    ConvertToMsg,
+    ConvertToMsg {
+        /// The file to convert
+        #[arg(short = 'f', long = "file")]
+        path_to_file: String,
+    },
 }
 
 pub fn run() {
     let cli = Cli::parse();
 
     println!("Command: {:?}", cli.command);
-    println!("File: {:?}", cli.path_to_file);
     let result = match cli.command {
-        Command::ConvertToDtp => convert_to_dtp(cli.path_to_file),
-        Command::ConvertToMsg => convert_to_msg(cli.path_to_file),
+        Command::ConvertToDtp { path_to_file } => convert_to_dtp(path_to_file),
+        Command::ConvertToMsg { path_to_file } => convert_to_msg(path_to_file),
     };
 
     if let Err(error) = result {
