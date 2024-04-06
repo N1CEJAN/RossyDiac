@@ -19,13 +19,13 @@ enum Command {
     ConvertToDtp {
         /// The file to convert
         #[arg(short = 'f', long = "file")]
-        path_to_file: String,
+        path_to_msg_file: String,
     },
     /// Converts a DTP file to a MSG file
     ConvertToMsg {
         /// The file to convert
         #[arg(short = 'f', long = "file")]
-        path_to_file: String,
+        path_to_dtp_file: String,
     },
 }
 
@@ -34,8 +34,8 @@ pub fn run() {
 
     println!("Command: {:?}", cli.command);
     let result = match cli.command {
-        Command::ConvertToDtp { path_to_file } => convert_to_dtp(path_to_file.as_str()),
-        Command::ConvertToMsg { path_to_file } => convert_to_msg(path_to_file.as_str()),
+        Command::ConvertToDtp { path_to_msg_file } => convert_to_dtp(path_to_msg_file.as_str()),
+        Command::ConvertToMsg { path_to_dtp_file } => convert_to_msg(path_to_dtp_file.as_str()),
     };
 
     if let Err(error) = result {
