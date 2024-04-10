@@ -1,5 +1,5 @@
-use clap::{CommandFactory, Parser, Subcommand};
 use clap::error::ErrorKind;
+use clap::{CommandFactory, Parser, Subcommand};
 
 use crate::business::error::ServiceError;
 use crate::business::handler::{convert_to_dtp, convert_to_msg};
@@ -39,11 +39,14 @@ pub fn run() {
     };
 
     if let Err(error) = result {
-        Cli::command().error(
-            match error {
-                ServiceError::Io(_) => ErrorKind::Io,
-            },
-            format!("{}", error),
-        ).exit();
+        Cli::command()
+            .error(
+                match error {
+                    ServiceError::Io(_) => ErrorKind::Io,
+                    ServiceError::Parser(_) => ErrorKind::Format,
+                },
+                format!("{}", error),
+            )
+            .exit();
     }
 }
