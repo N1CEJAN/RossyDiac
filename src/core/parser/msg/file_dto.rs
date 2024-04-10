@@ -1,4 +1,4 @@
-use crate::core::ros2::field_dto::FieldDto;
+use crate::core::parser::msg::field_dto::FieldDto;
 
 #[derive(Debug)]
 pub struct FileDto {

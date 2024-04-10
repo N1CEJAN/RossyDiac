@@ -1,5 +1,6 @@
 use clap::error::ErrorKind;
 use clap::{CommandFactory, Parser, Subcommand};
+use log::debug;
 
 use crate::business::error::ServiceError;
 use crate::business::handler::{convert_to_dtp, convert_to_msg};
@@ -32,7 +33,7 @@ enum Command {
 pub fn run() {
     let cli = Cli::parse();
 
-    println!("Command: {:?}", cli.command);
+    debug!("Command: {:?}", cli.command);
     let result = match cli.command {
         Command::ConvertToDtp { path_to_msg_file } => convert_to_dtp(path_to_msg_file.as_str()),
         Command::ConvertToMsg { path_to_dtp_file } => convert_to_msg(path_to_dtp_file.as_str()),

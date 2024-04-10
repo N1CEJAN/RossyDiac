@@ -1,3 +1,4 @@
+use log::debug;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while1};
 use nom::character::complete::{alphanumeric1, digit1, multispace0};
@@ -7,29 +8,29 @@ use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
 use crate::business::error::ServiceError;
-use crate::core::ros2::field_dto::FieldDto;
-use crate::core::ros2::field_name_dto::FieldNameDto;
-use crate::core::ros2::field_type::{FieldType, PrimitiveConstraint, PrimitiveDatatype};
-use crate::core::ros2::file_dto::FileDto;
+use crate::core::parser::msg::field_dto::FieldDto;
+use crate::core::parser::msg::field_name_dto::FieldNameDto;
+use crate::core::parser::msg::field_type::{FieldType, PrimitiveConstraint, PrimitiveDatatype};
+use crate::core::parser::msg::file_dto::FileDto;
 
 pub struct MsgReader;
 
 impl MsgReader {
     pub fn read(path_to_file: &str) -> Result<FileDto, ServiceError> {
-        println!("File: {:?}", path_to_file);
+        debug!("File: {:?}", path_to_file);
         let file_content = std::fs::read_to_string(path_to_file)
             .map_err(|err| ServiceError::Io(format!("{:?}", err)))?;
-        println!("File Content: {:?}", file_content);
+        debug!("File Content: {:?}", file_content);
         let (remaining, parsed) = parse_file(file_content.as_str())
             .map_err(|err| ServiceError::Parser(format!("{:?}", err)))?;
-        println!("Remaining: {:?}", remaining);
+        debug!("Remaining: {:?}", remaining);
         return Ok(parsed);
     }
 }
 
 fn parse_file(input: &str) -> IResult<&str, FileDto> {
     let result = map(many0(terminated(parse_field, multispace0)), FileDto::new)(input)?;
-    println!("parse_file with output: {:?}", result);
+    debug!("parse_file with output: {:?}", result);
     Ok(result)
 }
 
@@ -38,13 +39,13 @@ fn parse_field(input: &str) -> IResult<&str, FieldDto> {
         tuple((parse_field_type, multispace0, parse_field_name)),
         |(field_type, _, field_name)| FieldDto::new(field_type, field_name, None),
     )(input)?;
-    println!("parse_field with output: {:?}", result);
+    debug!("parse_field with output: {:?}", result);
     Ok(result)
 }
 
 fn parse_field_type(input: &str) -> IResult<&str, FieldType> {
     let result = alt((parse_primitive_fieldtype, parse_complex_fieldtype))(input)?;
-    println!("parse_field_type with output: {:?}", result);
+    debug!("parse_field_type with output: {:?}", result);
     Ok(result)
 }
 
@@ -61,7 +62,7 @@ fn parse_primitive_fieldtype(input: &str) -> IResult<&str, FieldType> {
             constraints,
         },
     )(input)?;
-    println!("parse_primitive_fieldtype with output: {:?}", result);
+    debug!("parse_primitive_fieldtype with output: {:?}", result);
     Ok(result)
 }
 
@@ -83,7 +84,7 @@ fn parse_primitive_datatype(input: &str) -> IResult<&str, PrimitiveDatatype> {
         map(tag("string"), |_| PrimitiveDatatype::String),
         map(tag("wstring"), |_| PrimitiveDatatype::Wstring),
     ))(input)?;
-    println!("parse_primitive_datatype with output: {:?}", result);
+    debug!("parse_primitive_datatype with output: {:?}", result);
     Ok(result)
 }
 
@@ -104,7 +105,7 @@ fn parse_primitive_constraint(input: &str) -> IResult<&str, PrimitiveConstraint>
             PrimitiveConstraint::BoundedDynamicArray(casted)
         }),
     ))(input)?;
-    println!("parse_primitive_constraint with output: {:?}", result);
+    debug!("parse_primitive_constraint with output: {:?}", result);
     Ok(result)
 }
 
@@ -142,6 +143,6 @@ fn parse_field_name(input: &str) -> IResult<&str, FieldNameDto> {
         s.chars().next().unwrap().is_alphabetic()
     });
     let result = map(decorated3, FieldNameDto::new)(input)?;
-    println!("parse_field_name with output: {:?}", result);
+    debug!("parse_field_name with output: {:?}", result);
     Ok(result)
 }

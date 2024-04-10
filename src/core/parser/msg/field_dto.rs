@@ -1,5 +1,5 @@
-use crate::core::ros2::field_name_dto::FieldNameDto;
-use crate::core::ros2::field_type::FieldType;
+use crate::core::parser::msg::field_name_dto::FieldNameDto;
+use crate::core::parser::msg::field_type::FieldType;
 
 #[derive(Debug, Clone)]
 pub struct FieldDto {

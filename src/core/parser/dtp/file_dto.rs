@@ -1,12 +1,12 @@
 #[derive(Debug)]
-pub struct DtpFileDto {
+pub struct FileDto {
     content: String,
 }
 
-impl DtpFileDto {
+impl FileDto {
     pub fn new(content: &str) -> Self {
         Self {
-            content: content.to_string().clone()
+            content: content.to_string().clone(),
         }
     }
 }
