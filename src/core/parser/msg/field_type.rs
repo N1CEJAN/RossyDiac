@@ -1,13 +1,23 @@
 #[derive(Debug, Clone)]
-pub enum FieldType {
-    Primitive {
-        datatype: PrimitiveDatatype,
-        constraints: Vec<PrimitiveConstraint>,
-    },
-    Complex {
-        datatype: String,
-        package: Option<String>,
-    },
+pub struct FieldType {
+    datatype: Datatype,
+    constraint: Vec<Constraint>,
+}
+
+impl FieldType {
+    pub fn new(datatype: Datatype, constraint: Vec<Constraint>) -> Self {
+        Self {
+            datatype,
+            constraint,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Datatype {
+    Primitive(PrimitiveDatatype),
+    String(StringDatatype),
+    Complex(Option<String>, String),
 }
 
 #[derive(Debug, Clone)]
@@ -25,14 +35,28 @@ pub enum PrimitiveDatatype {
     Uint32,
     Int64,
     Uint64,
+}
+
+#[derive(Debug, Clone)]
+pub enum StringDatatype {
     String,
     Wstring,
 }
 
 #[derive(Debug, Clone)]
-pub enum PrimitiveConstraint {
+pub enum Constraint {
+    StringConstraint(StringConstraint),
+    ArrayConstraint(ArrayConstraint),
+}
+
+#[derive(Debug, Clone)]
+pub enum StringConstraint {
+    BoundedString(usize),
+}
+
+#[derive(Debug, Clone)]
+pub enum ArrayConstraint {
     StaticArray(usize),
     UnboundedDynamicArray,
     BoundedDynamicArray(usize),
-    BoundedString(usize),
 }
