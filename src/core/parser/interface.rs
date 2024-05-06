@@ -9,8 +9,8 @@ impl File {
 
 #[derive(Debug, Clone)]
 pub enum Field {
-    Variable(Datatype, Vec<Constraint>, String, Option<String>),
-    Constant(Datatype, Vec<Constraint>, String, String),
+    Variable(Datatype, Vec<Constraint>, String, Option<Value>),
+    Constant(Datatype, Vec<Constraint>, String, Value),
 }
 
 #[derive(Debug, Clone)]
@@ -40,10 +40,37 @@ pub enum Datatype {
     Custom(String),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Constraint {
     BoundedString(usize),
     StaticArray(usize),
     UnboundedDynamicArray,
     BoundedDynamicArray(usize),
+}
+
+#[derive(Debug, Clone)]
+pub enum Value {
+    Array(Vec<Value>),
+    Bool(bool),
+    Byte(u8),
+    Float32(f32),
+    Float64(f64),
+    Int8(i8),
+    Uint8(u8),
+    Int16(i16),
+    Uint16(u16),
+    Int32(i32),
+    Uint32(u32),
+    Int64(i64),
+    Uint64(u64),
+    Char(char),
+    String(String),
+    Wstring(String),
+    Word,
+    Dword,
+    Lword,
+    Time,
+    TimeOfDay,
+    Date,
+    DateAndTime,
 }

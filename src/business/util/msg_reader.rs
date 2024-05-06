@@ -1,16 +1,17 @@
 use log::{debug, info};
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_until1, take_while1};
-use nom::character::complete::{anychar, digit1, line_ending, multispace0, multispace1};
+use nom::character::complete::{
+    anychar, digit1, i16, i32, i64, i8, multispace0, multispace1, u16, u32, u64, u8,
+};
 use nom::combinator::{map, opt, verify};
-use nom::complete::take;
-use nom::multi::{many0, many_m_n, many_till, separated_list0};
+use nom::multi::{many0, many_m_n, separated_list0};
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
 use crate::business::error::ServiceError;
 use crate::core::parser::interface::Field::{Constant, Variable};
-use crate::core::parser::interface::{Constraint, Datatype, Field, File};
+use crate::core::parser::interface::{Constraint, Datatype, Field, File, Value};
 
 pub fn read(path_to_file: &str) -> Result<File, ServiceError> {
     info!("Start reading file {:?}", path_to_file);
@@ -38,15 +39,14 @@ fn parse_constant(input: &str) -> IResult<&str, Field> {
             parse_datatype,
             terminated(parse_constraints, multispace1),
             parse_field_name,
-            preceded(tag("="), parse_field_value),
+            preceded(tag("="), take_until1("\r\n")),
         )),
         |(datatype, constraints, field_name, field_value)| {
-            Constant(
-                datatype,
-                constraints,
-                field_name.to_string(),
-                field_value.to_string(),
-            )
+            let datatype_copy = datatype.clone();
+            let mut parser = parse_field_value(&datatype_copy, &constraints);
+            // Annahme: Standardwert wird immer korrekt angegeben
+            let value = parser(field_value).unwrap().1;
+            Constant(datatype, constraints, field_name.to_string(), value)
         },
     )(input)
 }
@@ -57,15 +57,14 @@ fn parse_variable(input: &str) -> IResult<&str, Field> {
             parse_datatype,
             terminated(parse_constraints, multispace1),
             parse_field_name,
-            opt(preceded(tag(" "), parse_field_value)),
+            opt(preceded(tag(" "), take_until1("\r\n"))),
         )),
         |(datatype, constraints, field_name, field_value)| {
-            Variable(
-                datatype,
-                constraints,
-                field_name.to_string(),
-                field_value.map(|v| v.to_string()),
-            )
+            let datatype_copy = datatype.clone();
+            let mut parser = parse_field_value(&datatype_copy, &constraints);
+            // Annahme: Standardwert wird immer korrekt angegeben
+            let option = field_value.map(|v| parser(v).unwrap().1);
+            Variable(datatype, constraints, field_name.to_string(), option)
         },
     )(input)
 }
@@ -132,15 +131,10 @@ fn parse_field_name(input: &str) -> IResult<&str, &str> {
     })(input)
 }
 
-fn parse_field_value(input: &str) -> IResult<&str, &str> {
-    // Annahme: Nur valide Standardwerte werden angegeben
-    take_until1("\r\n")(input)
-}
-
-fn parse_field_value2(
-    datatype: &Datatype,
-    constraints: Vec<Constraint>,
-) -> impl FnMut(&str) -> IResult<&str, Value> {
+fn parse_field_value<'a>(
+    datatype: &'a Datatype,
+    constraints: &Vec<Constraint>,
+) -> Box<dyn FnMut(&'a str) -> IResult<&'a str, Value> + 'a> {
     let is_array = constraints.iter().any(|c| match c {
         Constraint::StaticArray(_)
         | Constraint::UnboundedDynamicArray
@@ -149,78 +143,58 @@ fn parse_field_value2(
     });
 
     if is_array {
-        // Fehlt: Support für \", wie im Beispiel "Some \"string\""
-        map(
+        Box::new(map(
             delimited(
                 tag("["),
-                separated_list0(
-                    tag(","),
-                    alt((
-                        delimited(tag("\""), parse_field_value2(datatype, vec![]), tag("\"")),
-                        delimited(tag("'"), parse_field_value2(datatype, vec![]), tag("'")),
-                    )),
-                ),
-                tag("]\r\n"),
+                separated_list0(tag(","), parse_field_value(datatype, &vec![])),
+                tag("]"),
             ),
-            |values| Value::Array(values),
-        )
+            Value::Array,
+        ))
     } else {
         match datatype {
-            Datatype::Bool => alt((
+            Datatype::Bool => Box::new(alt((
                 map(tag("true"), |_| Value::Bool(true)),
                 map(tag("false"), |_| Value::Bool(false)),
+            ))),
+            Datatype::Byte => Box::new(map(u8, Value::Byte)),
+            Datatype::Int8 => Box::new(map(i8, Value::Int8)),
+            Datatype::Uint8 => Box::new(map(u8, Value::Uint8)),
+            Datatype::Int16 => Box::new(map(i16, Value::Int16)),
+            Datatype::Uint16 => Box::new(map(u16, Value::Uint16)),
+            Datatype::Int32 => Box::new(map(i32, Value::Int32)),
+            Datatype::Uint32 => Box::new(map(u32, Value::Uint32)),
+            Datatype::Int64 => Box::new(map(i64, Value::Int64)),
+            Datatype::Uint64 => Box::new(map(u64, Value::Uint64)),
+            Datatype::Float32 => todo!(),
+            Datatype::Float64 => todo!(),
+            Datatype::Char => Box::new(map(anychar, Value::Char)),
+            Datatype::String => Box::new(map(
+                // Fehlt: Support für \", wie im Beispiel "Some \"string\""
+                // Fehlt: Support für \', wie im Beispiel 'Some \'string\''
+                alt((
+                    delimited(tag("\""), take_until1("\""), tag("\"")),
+                    delimited(tag("'"), take_until1("'"), tag("'")),
+                )),
+                |str: &str| Value::String(str.to_string()),
             )),
-            Datatype::Byte => map(take(8usize), |byte: u8| Value::Byte()),
-            Datatype::Float32 => {}
-            Datatype::Float64 => {}
-            Datatype::Int8 => {}
-            Datatype::Uint8 => {}
-            Datatype::Int16 => {}
-            Datatype::Uint16 => {}
-            Datatype::Int32 => {}
-            Datatype::Uint32 => {}
-            Datatype::Int64 => {}
-            Datatype::Uint64 => {}
-            Datatype::Char => {}
-            Datatype::String => {}
-            Datatype::Wstring => {}
+            Datatype::Wstring => Box::new(map(
+                // Fehlt: Support für \", wie im Beispiel "Some \"string\""
+                // Fehlt: Support für \', wie im Beispiel 'Some \'string\''
+                alt((
+                    delimited(tag("\""), take_until1("\""), tag("\"")),
+                    delimited(tag("'"), take_until1("'"), tag("'")),
+                )),
+                |str: &str| Value::Wstring(str.to_string()),
+            )),
             Datatype::Word
             | Datatype::Dword
             | Datatype::Lword
             | Datatype::Time
             | Datatype::TimeOfDay
             | Datatype::Date
-            | Datatype::DateAndTime => {}
-            Datatype::Custom(_) => {}
-            _ => {}
+            | Datatype::DateAndTime
+            | Datatype::Custom(_) => unimplemented!(),
         }
     }
-}
-
-enum Value {
-    Custom,
-    Array(Vec<Value>),
-    Bool(bool),
-    Byte(u8),
-    Float32(f32),
-    Float64(f64),
-    Int8(i8),
-    Uint8(u8),
-    Int16(i16),
-    Uint16(u16),
-    Int32(i32),
-    Uint32(u32),
-    Int64(i64),
-    Uint64(u64),
-    Char(char),
-    String(String),
-    Wstring(String),
-    // Word,
-    // Dword,
-    // Lword,
-    // Time,
-    // TimeOfDay,
-    // Date,
-    // DateAndTime,
-    // Custom(String),
 }
