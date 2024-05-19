@@ -1,9 +1,21 @@
 #[derive(Debug, Clone)]
-pub struct File(Vec<Field>);
+pub enum DatatypeKind {
+    StructuredType(StructuredType),
+    // EnumeratedType,
+}
 
-impl File {
-    pub fn new(field0: Vec<Field>) -> Self {
-        Self(field0)
+#[derive(Debug, Clone)]
+pub struct StructuredType {
+    name: String,
+    fields: Vec<Field>,
+}
+
+impl StructuredType {
+    pub fn new(name: &str, fields: Vec<Field>) -> Self {
+        Self {
+            name: name.to_string().clone(),
+            fields,
+        }
     }
 }
 

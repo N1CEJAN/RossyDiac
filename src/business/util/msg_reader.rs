@@ -10,27 +10,28 @@ use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
 use crate::business::error::ServiceError;
-use crate::core::parser::interface::Field::{Constant, Variable};
-use crate::core::parser::interface::{Constraint, Datatype, Field, File, Value};
+use crate::core::interface::Field::{Constant, Variable};
+use crate::core::interface::{Constraint, Datatype, Field, DatatypeKind, StructuredType, Value};
 
-pub fn read(path_to_file: &str) -> Result<File, ServiceError> {
+pub fn read(path_to_file: &str) -> Result<DatatypeKind, ServiceError> {
     info!("Start reading file {:?}", path_to_file);
     let file_content = std::fs::read_to_string(path_to_file)
         .map_err(|err| ServiceError::Io(format!("{:?}", err)))?;
-    let (_, parsed) = parse_file(file_content.as_str())
-        .map_err(|err| ServiceError::Parser(format!("{:?}", err)))?;
+    let parsed_object = parse(path_to_file, file_content.as_str());
     info!("Finished reading file {:?}", path_to_file);
-    return Ok(parsed);
+    parsed_object
 }
 
-fn parse_file(input: &str) -> IResult<&str, File> {
-    let result = map(many0(parse_line), File::new)(input)?;
+fn parse(path_to_file: &str, input: &str) -> Result<DatatypeKind, ServiceError> {
+    let (_, fields) = many0(terminated(parse_field, multispace0))(input)
+        .map_err(|err| ServiceError::Parser(format!("{:?}", err)))?;
+    let result = DatatypeKind::StructuredType(StructuredType::new(path_to_file, fields));
     debug!("parse_file with output: {:#?}", result);
     Ok(result)
 }
 
-fn parse_line(input: &str) -> IResult<&str, Field> {
-    terminated(alt((parse_constant, parse_variable)), multispace0)(input)
+fn parse_field(input: &str) -> IResult<&str, Field> {
+    alt((parse_constant, parse_variable))(input)
 }
 
 fn parse_constant(input: &str) -> IResult<&str, Field> {
