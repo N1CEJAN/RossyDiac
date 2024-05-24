@@ -42,7 +42,7 @@ fn parse_constant(input: &str) -> IResult<&str, Field> {
         )),
         |(datatype, constraints, field_name, field_value)| {
             let datatype_copy = datatype.clone();
-            let mut parser = parse_field_value(&datatype_copy, &constraints);
+            let mut parser = parse_initial_value(&datatype_copy, &constraints);
             // Annahme: Standardwert wird immer korrekt angegeben
             let value = parser(field_value).unwrap().1;
             Constant(datatype, constraints, field_name.to_string(), value)
@@ -60,17 +60,12 @@ fn parse_variable(input: &str) -> IResult<&str, Field> {
         )),
         |(datatype, constraints, field_name, field_value)| {
             let datatype_copy = datatype.clone();
-            let mut parser = parse_field_value(&datatype_copy, &constraints);
+            let mut parser = parse_initial_value(&datatype_copy, &constraints);
             // Annahme: Standardwert wird immer korrekt angegeben
             let option = field_value.map(|v| parser(v).unwrap().1);
             Variable(datatype, constraints, field_name.to_string(), option)
         },
     )(input)
-}
-
-fn parse_constraints(input: &str) -> IResult<&str, Vec<Constraint>> {
-    // Annahme: String Constraints werden nur mit String Datentypen angegeben
-    many_m_n(0, 2, parse_constraint)(input)
 }
 
 fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
@@ -97,6 +92,11 @@ fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
             |custom_type: &str| BaseType::Custom(custom_type.to_string()),
         ),
     ))(input)
+}
+
+fn parse_constraints(input: &str) -> IResult<&str, Vec<Constraint>> {
+    // Annahme: String Constraints werden nur mit String Datentypen angegeben
+    many_m_n(0, 2, parse_constraint)(input)
 }
 
 fn parse_constraint(input: &str) -> IResult<&str, Constraint> {
@@ -130,7 +130,7 @@ fn parse_field_name(input: &str) -> IResult<&str, &str> {
     })(input)
 }
 
-fn parse_field_value<'a>(
+fn parse_initial_value<'a>(
     datatype: &BaseType,
     constraints: &[Constraint],
 ) -> Box<dyn FnMut(&'a str) -> IResult<&str, InitialValue> + 'a> {
@@ -145,7 +145,7 @@ fn parse_field_value<'a>(
         Box::new(map(
             delimited(
                 tag("["),
-                separated_list0(tag(","), parse_field_value(datatype, &[])),
+                separated_list0(tag(","), parse_initial_value(datatype, &[])),
                 tag("]"),
             ),
             InitialValue::Array,
