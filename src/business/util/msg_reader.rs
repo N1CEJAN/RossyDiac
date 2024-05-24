@@ -131,9 +131,9 @@ fn parse_field_name(input: &str) -> IResult<&str, &str> {
 }
 
 fn parse_field_value<'a>(
-    datatype: &'a BaseType,
+    datatype: &BaseType,
     constraints: &[Constraint],
-) -> Box<dyn FnMut(&'a str) -> IResult<&'a str, InitialValue> + 'a> {
+) -> Box<dyn FnMut(&'a str) -> IResult<&str, InitialValue> + 'a> {
     let is_array = constraints.iter().any(|c| match c {
         Constraint::StaticArray(_)
         | Constraint::UnboundedDynamicArray

@@ -189,10 +189,10 @@ macro_rules! parse_primitive_initial_value {
     };
 }
 
-fn parse_initial_value<'a>(
-    base_type: &'a BaseType,
-    array_size: &'a Option<usize>,
-) -> Box<dyn FnMut(&str) -> Result<InitialValue> + 'a> {
+fn parse_initial_value(
+    base_type: &BaseType,
+    array_size: &Option<usize>,
+) -> Box<dyn FnMut(&str) -> Result<InitialValue>> {
     if let Some(array_capacity) = array_size {
         // Box::new(move || {
         //     let mut initial_values = Vec::with_capacity(*array_capacity);
