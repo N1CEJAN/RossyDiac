@@ -1,32 +1,25 @@
 use log::{debug, info};
 use xmltree::{Element, XMLNode};
 
-use crate::business::error::ServiceError;
-use crate::core::dtp::{
-    BaseType, CustomDataType, DataTypeKind, InitialValue, PrimitiveDataType, PrimitiveValue,
-    StructuredType, StructuredTypeChild, VarDeclaration,
-};
+use crate::business::error::{Error, Result};
+use crate::core::dtp::*;
 
-pub fn read(path_to_file: &str) -> Result<CustomDataType, ServiceError> {
+pub fn read(path_to_file: &str) -> Result<CustomDataType> {
     info!("Start reading file {:?}", path_to_file);
-    let file =
-        std::fs::File::open(path_to_file).map_err(|err| ServiceError::Io(format!("{:?}", err)))?;
+    let file = std::fs::File::open(path_to_file)?;
     let parsed_object = parse_data_type(file);
     info!("Finished reading file {:?}", path_to_file);
     parsed_object
 }
 
-pub fn parse_data_type(file: std::fs::File) -> Result<CustomDataType, ServiceError> {
-    let data_type_element =
-        Element::parse(file).map_err(|err| ServiceError::Parser(format!("{:?}", err)))?;
+pub fn parse_data_type(file: std::fs::File) -> Result<CustomDataType> {
+    let data_type_element = Element::parse(file)?;
 
     let name = data_type_element
         .attributes
         .get_key_value("Name")
         .map(|key_value| key_value.1.clone())
-        .ok_or(ServiceError::Parser(String::from(
-            "No \"Name\" attribute found on \"DataType\" element",
-        )))?;
+        .ok_or("No \"Name\" attribute found on \"DataType\" element")?;
     let comment = data_type_element
         .attributes
         .get_key_value("Comment")
@@ -39,14 +32,12 @@ pub fn parse_data_type(file: std::fs::File) -> Result<CustomDataType, ServiceErr
     Ok(result)
 }
 
-fn parse_data_type_kind(element: &Element) -> Result<DataTypeKind, ServiceError> {
+fn parse_data_type_kind(element: &Element) -> Result<DataTypeKind> {
     let data_type_kind_element =
-        get_filtered_children(&element, |child| DataTypeKind::matches_any(&child.name))
+        get_filtered_children(element, |child| DataTypeKind::matches_any(&child.name))
             .into_iter()
-            .nth(0)
-            .ok_or(ServiceError::Parser(String::from(
-                "No element found defining the data type kind in \"DataType\" element",
-            )))?;
+            .next()
+            .ok_or("No data type kind element found in \"DataType\" element")?;
 
     match data_type_kind_element.name.as_ref() {
         // "DirectlyDerivedType" => Ok(DataTypeKind::DirectlyDerivedType(parse_directly_derived_type(
@@ -62,16 +53,17 @@ fn parse_data_type_kind(element: &Element) -> Result<DataTypeKind, ServiceError>
         //     &data_type_kind_element,
         // )?)),
         "StructuredType" => Ok(DataTypeKind::StructuredType(parse_structured_type(
-            &data_type_kind_element,
+            data_type_kind_element,
         )?)),
-        _ => Err(ServiceError::Parser(format!(
-            "Unsupported DataType child element: {}",
+        _ => Err(format!(
+            "Unsupported \"DataType\" child element: {}",
             data_type_kind_element.name
-        ))),
+        )
+        .into()),
     }
 }
 
-fn parse_structured_type(element: &Element) -> Result<StructuredType, ServiceError> {
+fn parse_structured_type(element: &Element) -> Result<StructuredType> {
     let comment = element
         .attributes
         .get_key_value("Comment")
@@ -84,10 +76,8 @@ fn parse_structured_type(element: &Element) -> Result<StructuredType, ServiceErr
     Ok(result)
 }
 
-fn parse_structured_type_children(
-    element: &Element,
-) -> Result<Vec<StructuredTypeChild>, ServiceError> {
-    let structured_type_child_elements = get_filtered_children(&element, |child| {
+fn parse_structured_type_children(element: &Element) -> Result<Vec<StructuredTypeChild>> {
+    let structured_type_child_elements = get_filtered_children(element, |child| {
         StructuredTypeChild::matches_any(&child.name)
     });
 
@@ -101,10 +91,11 @@ fn parse_structured_type_children(
             //     parse_subrange_var_declaration(element),
             // )),
             _ => {
-                return Err(ServiceError::Parser(format!(
+                return Err(format!(
                     "Unsupported StructuredType child element : {}",
                     element.name
-                )));
+                )
+                .into());
             }
         };
     }
@@ -112,24 +103,24 @@ fn parse_structured_type_children(
     Ok(result)
 }
 
-fn parse_var_declaration(element: &Element) -> Result<VarDeclaration, ServiceError> {
+fn parse_var_declaration(element: &Element) -> Result<VarDeclaration> {
     let name = element
         .attributes
         .get_key_value("Name")
         .map(|key_value| key_value.1.clone())
-        .ok_or(ServiceError::Parser(format!(
+        .ok_or(format!(
             "No \"Name\" attribute defined for \"{}\" element",
             element.name
-        )))?;
+        ))?;
     let base_type = element
         .attributes
         .get_key_value("Type")
         .map(|key_value| key_value.1.clone())
         .map(|value| parse_base_type(value.as_str()))
-        .ok_or(ServiceError::Parser(format!(
+        .ok_or(format!(
             "No \"Type\" attribute defined for \"{}\" element",
             element.name
-        )))?;
+        ))?;
     // sollte definiert sein in Annex B vom IEC 61131-3 (Quelle: IEC 61499-2 Table A.3)
     let array_size = element
         .attributes
@@ -157,43 +148,51 @@ fn parse_var_declaration(element: &Element) -> Result<VarDeclaration, ServiceErr
 
 fn parse_base_type(string: &str) -> BaseType {
     match string {
-        "BOOL" => BaseType::Primitive(PrimitiveDataType::BOOL),
-        "SINT" => BaseType::Primitive(PrimitiveDataType::SINT),
-        "INT" => BaseType::Primitive(PrimitiveDataType::INT),
-        "DINT" => BaseType::Primitive(PrimitiveDataType::DINT),
-        "LINT" => BaseType::Primitive(PrimitiveDataType::LINT),
-        "USINT" => BaseType::Primitive(PrimitiveDataType::USINT),
-        "UINT" => BaseType::Primitive(PrimitiveDataType::UINT),
-        "UDINT" => BaseType::Primitive(PrimitiveDataType::UDINT),
-        "ULINT" => BaseType::Primitive(PrimitiveDataType::ULINT),
-        "REAL" => BaseType::Primitive(PrimitiveDataType::REAL),
-        "LREAL" => BaseType::Primitive(PrimitiveDataType::LREAL),
-        "BYTE" => BaseType::Primitive(PrimitiveDataType::BYTE),
-        "WORD" => BaseType::Primitive(PrimitiveDataType::WORD),
-        "DWORD" => BaseType::Primitive(PrimitiveDataType::DWORD),
-        "LWORD" => BaseType::Primitive(PrimitiveDataType::LWORD),
-        "STRING" => BaseType::Primitive(PrimitiveDataType::STRING),
-        "WSTRING" => BaseType::Primitive(PrimitiveDataType::WSTRING),
-        "TIME" => BaseType::Primitive(PrimitiveDataType::TIME),
-        "DATE" => BaseType::Primitive(PrimitiveDataType::DATE),
-        "TIME_OF_DAY" => BaseType::Primitive(PrimitiveDataType::TIME_OF_DAY),
-        "TOD" => BaseType::Primitive(PrimitiveDataType::TOD),
-        "DATE_AND_TIME" => BaseType::Primitive(PrimitiveDataType::DATE_AND_TIME),
-        "DT" => BaseType::Primitive(PrimitiveDataType::DT),
+        "BOOL" => BaseType::BOOL,
+        "SINT" => BaseType::SINT,
+        "INT" => BaseType::INT,
+        "DINT" => BaseType::DINT,
+        "LINT" => BaseType::LINT,
+        "USINT" => BaseType::USINT,
+        "UINT" => BaseType::UINT,
+        "UDINT" => BaseType::UDINT,
+        "ULINT" => BaseType::ULINT,
+        "REAL" => BaseType::REAL,
+        "LREAL" => BaseType::LREAL,
+        "BYTE" => BaseType::BYTE,
+        "WORD" => BaseType::WORD,
+        "DWORD" => BaseType::DWORD,
+        "LWORD" => BaseType::LWORD,
+        "STRING" => BaseType::STRING,
+        "WSTRING" => BaseType::WSTRING,
+        "TIME" => BaseType::TIME,
+        "DATE" => BaseType::DATE,
+        "TIME_OF_DAY" => BaseType::TIME_OF_DAY,
+        "TOD" => BaseType::TOD,
+        "DATE_AND_TIME" => BaseType::DATE_AND_TIME,
+        "DT" => BaseType::DT,
         _ => BaseType::Custom(string.to_string()),
     }
 }
 
-fn parse_array_size(input: &str) -> Result<usize, ServiceError> {
-    input
-        .parse()
-        .map_err(|err| ServiceError::Parser(format!("{:?}", err)))
+fn parse_array_size(input: &str) -> Result<usize> {
+    input.parse().map_err(Error::custom)
+}
+
+macro_rules! parse_primitive_initial_value {
+    ($iec61131_primitive:ident) => {
+        Box::new(|str| {
+            str.parse()
+                .map(InitialValue::$iec61131_primitive)
+                .map_err(Error::custom)
+        })
+    };
 }
 
 fn parse_initial_value<'a>(
     base_type: &'a BaseType,
     array_size: &'a Option<usize>,
-) -> Box<dyn FnMut(&str) -> Result<InitialValue, ServiceError> + 'a> {
+) -> Box<dyn FnMut(&str) -> Result<InitialValue> + 'a> {
     if let Some(array_capacity) = array_size {
         // Box::new(move || {
         //     let mut initial_values = Vec::with_capacity(*array_capacity);
@@ -205,59 +204,38 @@ fn parse_initial_value<'a>(
         todo!()
     } else {
         match base_type {
-            BaseType::Primitive(primitive) => Box::new(move |str| {
-                Ok(InitialValue::Primitive(parse_primitive_initial_value(
-                    primitive,
-                )(str)?))
-            }),
+            BaseType::BOOL => parse_primitive_initial_value!(BOOL),
+            BaseType::SINT => parse_primitive_initial_value!(SINT),
+            BaseType::INT => parse_primitive_initial_value!(INT),
+            BaseType::DINT => parse_primitive_initial_value!(DINT),
+            BaseType::LINT => parse_primitive_initial_value!(LINT),
+            BaseType::USINT => parse_primitive_initial_value!(USINT),
+            BaseType::UINT => parse_primitive_initial_value!(UINT),
+            BaseType::UDINT => parse_primitive_initial_value!(UDINT),
+            BaseType::ULINT => parse_primitive_initial_value!(ULINT),
+            BaseType::REAL => parse_primitive_initial_value!(REAL),
+            BaseType::LREAL => parse_primitive_initial_value!(LREAL),
+            BaseType::BYTE => parse_primitive_initial_value!(BYTE),
+            BaseType::WORD => parse_primitive_initial_value!(WORD),
+            BaseType::DWORD => parse_primitive_initial_value!(DWORD),
+            BaseType::LWORD => parse_primitive_initial_value!(LWORD),
+            BaseType::STRING => parse_primitive_initial_value!(STRING),
+            BaseType::WSTRING => parse_primitive_initial_value!(WSTRING),
+            BaseType::TIME => parse_primitive_initial_value!(TIME),
+            BaseType::DATE => parse_primitive_initial_value!(DATE),
+            BaseType::TIME_OF_DAY => parse_primitive_initial_value!(TIME_OF_DAY),
+            BaseType::TOD => parse_primitive_initial_value!(TOD),
+            BaseType::DATE_AND_TIME => parse_primitive_initial_value!(DATE_AND_TIME),
+            BaseType::DT => parse_primitive_initial_value!(DT),
             BaseType::Custom(_) => Box::new(|_| Ok(InitialValue::Custom)),
         }
-    }
-}
-
-macro_rules! parse_primitive_initial_value {
-    ($iec61131_primitive:ident) => {
-        Box::new(|str| {
-            str.parse()
-                .map(PrimitiveValue::$iec61131_primitive)
-                .map_err(|err| ServiceError::Parser(format!("{:?}", err)))
-        })
-    };
-}
-fn parse_primitive_initial_value(
-    primitive_data_type: &PrimitiveDataType,
-) -> Box<dyn FnMut(&str) -> Result<PrimitiveValue, ServiceError>> {
-    match primitive_data_type {
-        PrimitiveDataType::BOOL => parse_primitive_initial_value!(BOOL),
-        PrimitiveDataType::SINT => parse_primitive_initial_value!(SINT),
-        PrimitiveDataType::INT => parse_primitive_initial_value!(INT),
-        PrimitiveDataType::DINT => parse_primitive_initial_value!(DINT),
-        PrimitiveDataType::LINT => parse_primitive_initial_value!(LINT),
-        PrimitiveDataType::USINT => parse_primitive_initial_value!(USINT),
-        PrimitiveDataType::UINT => parse_primitive_initial_value!(UINT),
-        PrimitiveDataType::UDINT => parse_primitive_initial_value!(UDINT),
-        PrimitiveDataType::ULINT => parse_primitive_initial_value!(ULINT),
-        PrimitiveDataType::REAL => parse_primitive_initial_value!(REAL),
-        PrimitiveDataType::LREAL => parse_primitive_initial_value!(LREAL),
-        PrimitiveDataType::BYTE => parse_primitive_initial_value!(BYTE),
-        PrimitiveDataType::WORD => parse_primitive_initial_value!(WORD),
-        PrimitiveDataType::DWORD => parse_primitive_initial_value!(DWORD),
-        PrimitiveDataType::LWORD => parse_primitive_initial_value!(LWORD),
-        PrimitiveDataType::STRING => parse_primitive_initial_value!(STRING),
-        PrimitiveDataType::WSTRING => parse_primitive_initial_value!(WSTRING),
-        PrimitiveDataType::TIME => parse_primitive_initial_value!(TIME),
-        PrimitiveDataType::DATE => parse_primitive_initial_value!(DATE),
-        PrimitiveDataType::TIME_OF_DAY => parse_primitive_initial_value!(TIME_OF_DAY),
-        PrimitiveDataType::TOD => parse_primitive_initial_value!(TOD),
-        PrimitiveDataType::DATE_AND_TIME => parse_primitive_initial_value!(DATE_AND_TIME),
-        PrimitiveDataType::DT => parse_primitive_initial_value!(DT),
     }
 }
 
 fn default_initial_value<'a>(
     base_type: &'a BaseType,
     array_size: &'a Option<usize>,
-) -> Box<dyn FnOnce() -> Result<InitialValue, ServiceError> + 'a> {
+) -> Box<dyn FnOnce() -> Result<InitialValue> + 'a> {
     if let Some(array_capacity) = array_size {
         Box::new(move || {
             let mut initial_values = Vec::with_capacity(*array_capacity);
@@ -268,39 +246,31 @@ fn default_initial_value<'a>(
         })
     } else {
         match base_type {
-            BaseType::Primitive(primitive) => {
-                Box::new(move || Ok(InitialValue::Primitive(default_primitive_value(primitive))))
-            }
+            BaseType::BOOL => Box::new(|| Ok(InitialValue::BOOL(false))),
+            BaseType::SINT => Box::new(|| Ok(InitialValue::SINT(0))),
+            BaseType::INT => Box::new(|| Ok(InitialValue::INT(0))),
+            BaseType::DINT => Box::new(|| Ok(InitialValue::DINT(0))),
+            BaseType::LINT => Box::new(|| Ok(InitialValue::LINT(0))),
+            BaseType::USINT => Box::new(|| Ok(InitialValue::USINT(0))),
+            BaseType::UINT => Box::new(|| Ok(InitialValue::UINT(0))),
+            BaseType::UDINT => Box::new(|| Ok(InitialValue::UDINT(0))),
+            BaseType::ULINT => Box::new(|| Ok(InitialValue::ULINT(0))),
+            BaseType::REAL => Box::new(|| Ok(InitialValue::REAL(0.0))),
+            BaseType::LREAL => Box::new(|| Ok(InitialValue::LREAL(0.0))),
+            BaseType::BYTE => Box::new(|| Ok(InitialValue::BYTE(0))),
+            BaseType::WORD => Box::new(|| Ok(InitialValue::WORD(0))),
+            BaseType::DWORD => Box::new(|| Ok(InitialValue::DWORD(0))),
+            BaseType::LWORD => Box::new(|| Ok(InitialValue::LWORD(0))),
+            BaseType::STRING => Box::new(|| Ok(InitialValue::STRING(String::new()))),
+            BaseType::WSTRING => Box::new(|| Ok(InitialValue::WSTRING(String::new()))),
+            BaseType::TIME => Box::new(|| Ok(InitialValue::TIME(0))),
+            BaseType::DATE => Box::new(|| Ok(InitialValue::DATE(0))),
+            BaseType::TIME_OF_DAY => Box::new(|| Ok(InitialValue::TIME_OF_DAY(0))),
+            BaseType::TOD => Box::new(|| Ok(InitialValue::TOD(0))),
+            BaseType::DATE_AND_TIME => Box::new(|| Ok(InitialValue::DATE_AND_TIME(0))),
+            BaseType::DT => Box::new(|| Ok(InitialValue::DT(0))),
             BaseType::Custom(_) => Box::new(|| Ok(InitialValue::Custom)),
         }
-    }
-}
-
-fn default_primitive_value(primitive_data_type: &PrimitiveDataType) -> PrimitiveValue {
-    match primitive_data_type {
-        PrimitiveDataType::BOOL => PrimitiveValue::BOOL(false),
-        PrimitiveDataType::SINT => PrimitiveValue::SINT(0),
-        PrimitiveDataType::INT => PrimitiveValue::INT(0),
-        PrimitiveDataType::DINT => PrimitiveValue::DINT(0),
-        PrimitiveDataType::LINT => PrimitiveValue::LINT(0),
-        PrimitiveDataType::USINT => PrimitiveValue::USINT(0),
-        PrimitiveDataType::UINT => PrimitiveValue::UINT(0),
-        PrimitiveDataType::UDINT => PrimitiveValue::UDINT(0),
-        PrimitiveDataType::ULINT => PrimitiveValue::ULINT(0),
-        PrimitiveDataType::REAL => PrimitiveValue::REAL(0.0),
-        PrimitiveDataType::LREAL => PrimitiveValue::LREAL(0.0),
-        PrimitiveDataType::BYTE => PrimitiveValue::BYTE(0),
-        PrimitiveDataType::WORD => PrimitiveValue::WORD(0),
-        PrimitiveDataType::DWORD => PrimitiveValue::DWORD(0),
-        PrimitiveDataType::LWORD => PrimitiveValue::LWORD(0),
-        PrimitiveDataType::STRING => PrimitiveValue::STRING(String::new()),
-        PrimitiveDataType::WSTRING => PrimitiveValue::WSTRING(String::new()),
-        PrimitiveDataType::TIME => PrimitiveValue::TIME(0),
-        PrimitiveDataType::DATE => PrimitiveValue::DATE(0),
-        PrimitiveDataType::TIME_OF_DAY => PrimitiveValue::TIME_OF_DAY(0),
-        PrimitiveDataType::TOD => PrimitiveValue::TOD(0),
-        PrimitiveDataType::DATE_AND_TIME => PrimitiveValue::DATE_AND_TIME(0),
-        PrimitiveDataType::DT => PrimitiveValue::DT(0),
     }
 }
 

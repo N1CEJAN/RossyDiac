@@ -49,7 +49,7 @@ pub struct StructuredType {
 }
 
 impl StructuredType {
-    pub fn new(comment: &str, children: &Vec<StructuredTypeChild>) -> Self {
+    pub fn new(comment: &str, children: &[StructuredTypeChild]) -> Self {
         Self {
             comment: comment.to_string(),
             children: children.to_vec(),
@@ -94,7 +94,7 @@ impl VarDeclaration {
         Self {
             name: name.to_string(),
             base_type: base_type.clone(),
-            array_size: array_size.clone(),
+            array_size: *array_size,
             initial_value: initial_value.clone(),
             comment: comment.to_string(),
         }
@@ -103,12 +103,6 @@ impl VarDeclaration {
 
 #[derive(Clone, Debug)]
 pub enum BaseType {
-    Primitive(PrimitiveDataType),
-    Custom(String),
-}
-
-#[derive(Clone, Debug)]
-pub enum PrimitiveDataType {
     BOOL,
     SINT,
     INT,
@@ -132,17 +126,11 @@ pub enum PrimitiveDataType {
     TOD,
     DATE_AND_TIME,
     DT,
+    Custom(String),
 }
 
 #[derive(Clone, Debug)]
 pub enum InitialValue {
-    Primitive(PrimitiveValue),
-    Custom,
-    Array(Vec<InitialValue>),
-}
-
-#[derive(Clone, Debug)]
-pub enum PrimitiveValue {
     BOOL(bool),
     SINT(i8),
     INT(i16),
@@ -166,4 +154,6 @@ pub enum PrimitiveValue {
     TOD(u64),
     DATE_AND_TIME(u64),
     DT(u64),
+    Custom,
+    Array(Vec<InitialValue>),
 }

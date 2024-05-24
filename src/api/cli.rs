@@ -2,7 +2,7 @@ use clap::error::ErrorKind;
 use clap::{CommandFactory, Parser, Subcommand};
 use log::debug;
 
-use crate::business::error::ServiceError;
+use crate::business::error::Error;
 use crate::business::handler::{convert_to_dtp, convert_to_msg};
 
 /// A simple-to-use converter prototype.
@@ -43,10 +43,12 @@ pub fn run() {
         Cli::command()
             .error(
                 match error {
-                    ServiceError::Io(_) => ErrorKind::Io,
-                    ServiceError::Parser(_) => ErrorKind::Format,
+                    Error::Custom(_) => ErrorKind::InvalidValue,
+                    Error::Io(_) => ErrorKind::Io,
+                    Error::DtpParser(_) => ErrorKind::Format,
+                    Error::MsgParser(_) => ErrorKind::Format,
                 },
-                format!("{}", error),
+                error,
             )
             .exit();
     }

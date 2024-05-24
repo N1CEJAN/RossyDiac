@@ -9,23 +9,21 @@ use nom::multi::{many0, many_m_n, separated_list0};
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
-use crate::business::error::ServiceError;
-use crate::core::interface::Field::{Constant, Variable};
-use crate::core::interface::{Constraint, Datatype, Field, DatatypeKind, StructuredType, Value};
+use crate::business::error::Result;
+use crate::core::msg::Field::{Constant, Variable};
+use crate::core::msg::*;
 
-pub fn read(path_to_file: &str) -> Result<DatatypeKind, ServiceError> {
+pub fn read(path_to_file: &str) -> Result<StructuredType> {
     info!("Start reading file {:?}", path_to_file);
-    let file_content = std::fs::read_to_string(path_to_file)
-        .map_err(|err| ServiceError::Io(format!("{:?}", err)))?;
+    let file_content = std::fs::read_to_string(path_to_file)?;
     let parsed_object = parse(path_to_file, file_content.as_str());
     info!("Finished reading file {:?}", path_to_file);
     parsed_object
 }
 
-fn parse(path_to_file: &str, input: &str) -> Result<DatatypeKind, ServiceError> {
-    let (_, fields) = many0(terminated(parse_field, multispace0))(input)
-        .map_err(|err| ServiceError::Parser(format!("{:?}", err)))?;
-    let result = DatatypeKind::StructuredType(StructuredType::new(path_to_file, fields));
+fn parse(path_to_file: &str, input: &str) -> Result<StructuredType> {
+    let (_, fields) = many0(terminated(parse_field, multispace0))(input)?;
+    let result = StructuredType::new(path_to_file, fields);
     debug!("parse_file with output: {:#?}", result);
     Ok(result)
 }
@@ -37,7 +35,7 @@ fn parse_field(input: &str) -> IResult<&str, Field> {
 fn parse_constant(input: &str) -> IResult<&str, Field> {
     map(
         tuple((
-            parse_datatype,
+            parse_base_type,
             terminated(parse_constraints, multispace1),
             parse_field_name,
             preceded(tag("="), take_until1("\r\n")),
@@ -55,7 +53,7 @@ fn parse_constant(input: &str) -> IResult<&str, Field> {
 fn parse_variable(input: &str) -> IResult<&str, Field> {
     map(
         tuple((
-            parse_datatype,
+            parse_base_type,
             terminated(parse_constraints, multispace1),
             parse_field_name,
             opt(preceded(tag(" "), take_until1("\r\n"))),
@@ -75,28 +73,28 @@ fn parse_constraints(input: &str) -> IResult<&str, Vec<Constraint>> {
     many_m_n(0, 2, parse_constraint)(input)
 }
 
-fn parse_datatype(input: &str) -> IResult<&str, Datatype> {
+fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
     alt((
         // primitive
-        map(tag("bool"), |_| Datatype::Bool),
-        map(tag("byte"), |_| Datatype::Byte),
-        map(tag("float32"), |_| Datatype::Float32),
-        map(tag("float64"), |_| Datatype::Float64),
-        map(tag("int8"), |_| Datatype::Int8),
-        map(tag("uint8"), |_| Datatype::Uint8),
-        map(tag("int16"), |_| Datatype::Int16),
-        map(tag("uint16"), |_| Datatype::Uint16),
-        map(tag("int32"), |_| Datatype::Int32),
-        map(tag("uint32"), |_| Datatype::Uint32),
-        map(tag("int64"), |_| Datatype::Int64),
-        map(tag("uint64"), |_| Datatype::Uint64),
-        map(tag("char"), |_| Datatype::Char),
-        map(tag("string"), |_| Datatype::String),
-        map(tag("wstring"), |_| Datatype::Wstring),
+        map(tag("bool"), |_| BaseType::Bool),
+        map(tag("byte"), |_| BaseType::Byte),
+        map(tag("float32"), |_| BaseType::Float32),
+        map(tag("float64"), |_| BaseType::Float64),
+        map(tag("int8"), |_| BaseType::Int8),
+        map(tag("uint8"), |_| BaseType::Uint8),
+        map(tag("int16"), |_| BaseType::Int16),
+        map(tag("uint16"), |_| BaseType::Uint16),
+        map(tag("int32"), |_| BaseType::Int32),
+        map(tag("uint32"), |_| BaseType::Uint32),
+        map(tag("int64"), |_| BaseType::Int64),
+        map(tag("uint64"), |_| BaseType::Uint64),
+        map(tag("char"), |_| BaseType::Char),
+        map(tag("string"), |_| BaseType::String),
+        map(tag("wstring"), |_| BaseType::Wstring),
         // custom
         map(
             alt((take_until1(" "), take_until1("["))),
-            |custom_type: &str| Datatype::Custom(custom_type.to_string()),
+            |custom_type: &str| BaseType::Custom(custom_type.to_string()),
         ),
     ))(input)
 }
@@ -133,9 +131,9 @@ fn parse_field_name(input: &str) -> IResult<&str, &str> {
 }
 
 fn parse_field_value<'a>(
-    datatype: &'a Datatype,
-    constraints: &Vec<Constraint>,
-) -> Box<dyn FnMut(&'a str) -> IResult<&'a str, Value> + 'a> {
+    datatype: &'a BaseType,
+    constraints: &[Constraint],
+) -> Box<dyn FnMut(&'a str) -> IResult<&'a str, InitialValue> + 'a> {
     let is_array = constraints.iter().any(|c| match c {
         Constraint::StaticArray(_)
         | Constraint::UnboundedDynamicArray
@@ -147,55 +145,48 @@ fn parse_field_value<'a>(
         Box::new(map(
             delimited(
                 tag("["),
-                separated_list0(tag(","), parse_field_value(datatype, &vec![])),
+                separated_list0(tag(","), parse_field_value(datatype, &[])),
                 tag("]"),
             ),
-            Value::Array,
+            InitialValue::Array,
         ))
     } else {
         match datatype {
-            Datatype::Bool => Box::new(alt((
-                map(tag("true"), |_| Value::Bool(true)),
-                map(tag("false"), |_| Value::Bool(false)),
+            BaseType::Bool => Box::new(alt((
+                map(tag("true"), |_| InitialValue::Bool(true)),
+                map(tag("false"), |_| InitialValue::Bool(false)),
             ))),
-            Datatype::Byte => Box::new(map(u8, Value::Byte)),
-            Datatype::Int8 => Box::new(map(i8, Value::Int8)),
-            Datatype::Uint8 => Box::new(map(u8, Value::Uint8)),
-            Datatype::Int16 => Box::new(map(i16, Value::Int16)),
-            Datatype::Uint16 => Box::new(map(u16, Value::Uint16)),
-            Datatype::Int32 => Box::new(map(i32, Value::Int32)),
-            Datatype::Uint32 => Box::new(map(u32, Value::Uint32)),
-            Datatype::Int64 => Box::new(map(i64, Value::Int64)),
-            Datatype::Uint64 => Box::new(map(u64, Value::Uint64)),
-            Datatype::Float32 => todo!(),
-            Datatype::Float64 => todo!(),
-            Datatype::Char => Box::new(map(anychar, Value::Char)),
-            Datatype::String => Box::new(map(
+            BaseType::Byte => Box::new(map(u8, InitialValue::Byte)),
+            BaseType::Float32 => todo!(),
+            BaseType::Float64 => todo!(),
+            BaseType::Int8 => Box::new(map(i8, InitialValue::Int8)),
+            BaseType::Uint8 => Box::new(map(u8, InitialValue::Uint8)),
+            BaseType::Int16 => Box::new(map(i16, InitialValue::Int16)),
+            BaseType::Uint16 => Box::new(map(u16, InitialValue::Uint16)),
+            BaseType::Int32 => Box::new(map(i32, InitialValue::Int32)),
+            BaseType::Uint32 => Box::new(map(u32, InitialValue::Uint32)),
+            BaseType::Int64 => Box::new(map(i64, InitialValue::Int64)),
+            BaseType::Uint64 => Box::new(map(u64, InitialValue::Uint64)),
+            BaseType::Char => Box::new(map(anychar, InitialValue::Char)),
+            BaseType::String => Box::new(map(
                 // Fehlt: Support für \", wie im Beispiel "Some \"string\""
                 // Fehlt: Support für \', wie im Beispiel 'Some \'string\''
                 alt((
                     delimited(tag("\""), take_until1("\""), tag("\"")),
                     delimited(tag("'"), take_until1("'"), tag("'")),
                 )),
-                |str: &str| Value::String(str.to_string()),
+                |str: &str| InitialValue::String(str.to_string()),
             )),
-            Datatype::Wstring => Box::new(map(
+            BaseType::Wstring => Box::new(map(
                 // Fehlt: Support für \", wie im Beispiel "Some \"string\""
                 // Fehlt: Support für \', wie im Beispiel 'Some \'string\''
                 alt((
                     delimited(tag("\""), take_until1("\""), tag("\"")),
                     delimited(tag("'"), take_until1("'"), tag("'")),
                 )),
-                |str: &str| Value::Wstring(str.to_string()),
+                |str: &str| InitialValue::Wstring(str.to_string()),
             )),
-            Datatype::Word
-            | Datatype::Dword
-            | Datatype::Lword
-            | Datatype::Time
-            | Datatype::TimeOfDay
-            | Datatype::Date
-            | Datatype::DateAndTime
-            | Datatype::Custom(_) => unimplemented!(),
+            BaseType::Custom(_) => Box::new(|str| Ok((str, InitialValue::Custom))),
         }
     }
 }

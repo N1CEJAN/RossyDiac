@@ -1,2 +1,2 @@
-pub mod interface;
+pub mod msg;
 pub mod dtp;

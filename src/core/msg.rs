@@ -1,10 +1,4 @@
 #[derive(Debug, Clone)]
-pub enum DatatypeKind {
-    StructuredType(StructuredType),
-    // EnumeratedType,
-}
-
-#[derive(Debug, Clone)]
 pub struct StructuredType {
     name: String,
     fields: Vec<Field>,
@@ -21,12 +15,12 @@ impl StructuredType {
 
 #[derive(Debug, Clone)]
 pub enum Field {
-    Variable(Datatype, Vec<Constraint>, String, Option<Value>),
-    Constant(Datatype, Vec<Constraint>, String, Value),
+    Variable(BaseType, Vec<Constraint>, String, Option<InitialValue>),
+    Constant(BaseType, Vec<Constraint>, String, InitialValue),
 }
 
 #[derive(Debug, Clone)]
-pub enum Datatype {
+pub enum BaseType {
     Bool,
     Byte,
     Float32,
@@ -42,13 +36,6 @@ pub enum Datatype {
     Char,
     String,
     Wstring,
-    Word,
-    Dword,
-    Lword,
-    Time,
-    TimeOfDay,
-    Date,
-    DateAndTime,
     Custom(String),
 }
 
@@ -61,8 +48,7 @@ pub enum Constraint {
 }
 
 #[derive(Debug, Clone)]
-pub enum Value {
-    Array(Vec<Value>),
+pub enum InitialValue {
     Bool(bool),
     Byte(u8),
     Float32(f32),
@@ -78,11 +64,6 @@ pub enum Value {
     Char(char),
     String(String),
     Wstring(String),
-    Word,
-    Dword,
-    Lword,
-    Time,
-    TimeOfDay,
-    Date,
-    DateAndTime,
+    Custom,
+    Array(Vec<InitialValue>),
 }
