@@ -4,7 +4,7 @@ use xmltree::{Element, XMLNode};
 use crate::business::error::{Error, Result};
 use crate::core::dtp::*;
 
-pub fn read(path_to_file: &str) -> Result<CustomDataType> {
+pub fn read(path_to_file: &str) -> Result<DataType> {
     info!("Start reading file {:?}", path_to_file);
     let file = std::fs::File::open(path_to_file)?;
     let parsed_object = parse_data_type(file);
@@ -12,22 +12,22 @@ pub fn read(path_to_file: &str) -> Result<CustomDataType> {
     parsed_object
 }
 
-pub fn parse_data_type(file: std::fs::File) -> Result<CustomDataType> {
+pub fn parse_data_type(file: std::fs::File) -> Result<DataType> {
     let data_type_element = Element::parse(file)?;
 
     let name = data_type_element
         .attributes
-        .get_key_value("Name")
+        .get_key_value(XML_TAG_DATA_TYPE)
         .map(|key_value| key_value.1.clone())
         .ok_or("No \"Name\" attribute found on \"DataType\" element")?;
     let comment = data_type_element
         .attributes
-        .get_key_value("Comment")
+        .get_key_value(XML_ATTRIBUTE_COMMENT)
         .map(|key_value| key_value.1.clone())
         .unwrap_or("".to_string());
     let data_type_kind = parse_data_type_kind(&data_type_element)?;
 
-    let result = CustomDataType::new(&name, &comment, &data_type_kind);
+    let result = DataType::new(&name, &comment, &data_type_kind);
     debug!("parse_file with output: {:#?}", result);
     Ok(result)
 }
@@ -52,7 +52,7 @@ fn parse_data_type_kind(element: &Element) -> Result<DataTypeKind> {
         // "ArrayType" => Ok(DataTypeKind::ArrayType(parse_array_type(
         //     &data_type_kind_element,
         // )?)),
-        "StructuredType" => Ok(DataTypeKind::StructuredType(parse_structured_type(
+        XML_TAG_STRUCTURED_TYPE => Ok(DataTypeKind::StructuredType(parse_structured_type(
             data_type_kind_element,
         )?)),
         _ => Err(format!(
@@ -66,7 +66,7 @@ fn parse_data_type_kind(element: &Element) -> Result<DataTypeKind> {
 fn parse_structured_type(element: &Element) -> Result<StructuredType> {
     let comment = element
         .attributes
-        .get_key_value("Comment")
+        .get_key_value(XML_ATTRIBUTE_COMMENT)
         .map(|comment| comment.1.clone())
         .unwrap_or("".to_string());
     let children = parse_structured_type_children(element)?;
@@ -84,7 +84,7 @@ fn parse_structured_type_children(element: &Element) -> Result<Vec<StructuredTyp
     let mut result = vec![];
     for structured_type_child_element in structured_type_child_elements.into_iter() {
         match structured_type_child_element.name.as_ref() {
-            "VarDeclaration" => result.push(StructuredTypeChild::VarDeclaration(
+            XML_TAG_VAR_DECLARATION => result.push(StructuredTypeChild::VarDeclaration(
                 parse_var_declaration(structured_type_child_element)?,
             )),
             // "SubrangeVarDeclaration" => result.push(StructuredTypeChild::SubrangeVarDeclaration(
@@ -106,7 +106,7 @@ fn parse_structured_type_children(element: &Element) -> Result<Vec<StructuredTyp
 fn parse_var_declaration(element: &Element) -> Result<VarDeclaration> {
     let name = element
         .attributes
-        .get_key_value("Name")
+        .get_key_value(XML_ATTRIBUTE_NAME)
         .map(|key_value| key_value.1.clone())
         .ok_or(format!(
             "No \"Name\" attribute defined for \"{}\" element",
@@ -114,7 +114,7 @@ fn parse_var_declaration(element: &Element) -> Result<VarDeclaration> {
         ))?;
     let base_type = element
         .attributes
-        .get_key_value("Type")
+        .get_key_value(XML_ATTRIBUTE_TYPE)
         .map(|key_value| key_value.1.clone())
         .map(|value| parse_base_type(value.as_str()))
         .ok_or(format!(
@@ -124,20 +124,20 @@ fn parse_var_declaration(element: &Element) -> Result<VarDeclaration> {
     // sollte definiert sein in Annex B vom IEC 61131-3 (Quelle: IEC 61499-2 Table A.3)
     let array_size = element
         .attributes
-        .get_key_value("ArraySize")
+        .get_key_value(XML_ATTRIBUTE_ARRAY_SIZE)
         .map(|key_value| key_value.1.clone())
         .map(|value| parse_array_size(value.as_str()))
         .transpose()?;
     // sollte definiert sein in Annex B.1.4.3 vom IEC 61131-3 (Quelle: IEC 61499-2 Table A.3)
     let initial_value = element
         .attributes
-        .get_key_value("Comment")
+        .get_key_value(XML_ATTRIBUTE_INITIAL_VALUE)
         .map(|key_value| key_value.1.clone())
         .map(|value| parse_initial_value(&base_type, &array_size)(value.as_str()))
         .unwrap_or_else(default_initial_value(&base_type, &array_size))?;
     let comment = element
         .attributes
-        .get_key_value("Comment")
+        .get_key_value(XML_ATTRIBUTE_COMMENT)
         .map(|key_value| key_value.1.clone())
         .unwrap_or("".to_string());
 
@@ -193,7 +193,7 @@ fn parse_initial_value(
     base_type: &BaseType,
     array_size: &Option<usize>,
 ) -> Box<dyn FnMut(&str) -> Result<InitialValue>> {
-    if let Some(array_capacity) = array_size {
+    if let Some(_) = array_size {
         // Box::new(move || {
         //     let mut initial_values = Vec::with_capacity(*array_capacity);
         //     for _ in 0..*array_capacity {

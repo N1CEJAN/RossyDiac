@@ -1,5 +1,5 @@
 #[derive(Clone, Debug)]
-pub struct CustomDataType {
+pub struct DataType {
     name: String,
     comment: String,
     // identification: Option<Identification>,
@@ -9,13 +9,22 @@ pub struct CustomDataType {
     data_type_kind: DataTypeKind,
 }
 
-impl CustomDataType {
+impl DataType {
     pub fn new(name: &str, comment: &str, data_type_kind: &DataTypeKind) -> Self {
         Self {
             name: name.to_string(),
             comment: comment.to_string(),
             data_type_kind: data_type_kind.clone(),
         }
+    }
+    pub fn comment(&self) -> &str {
+        &self.comment
+    }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn data_type_kind(&self) -> &DataTypeKind {
+        &self.data_type_kind
     }
 }
 
@@ -54,6 +63,12 @@ impl StructuredType {
             comment: comment.to_string(),
             children: children.to_vec(),
         }
+    }
+    pub fn comment(&self) -> &str {
+        &self.comment
+    }
+    pub fn children(&self) -> &Vec<StructuredTypeChild> {
+        &self.children
     }
 }
 
@@ -98,6 +113,21 @@ impl VarDeclaration {
             initial_value: initial_value.clone(),
             comment: comment.to_string(),
         }
+    }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn base_type(&self) -> &BaseType {
+        &self.base_type
+    }
+    pub fn array_size(&self) -> &Option<usize> {
+        &self.array_size
+    }
+    pub fn initial_value(&self) -> &InitialValue {
+        &self.initial_value
+    }
+    pub fn comment(&self) -> &str {
+        &self.comment
     }
 }
 
@@ -157,3 +187,13 @@ pub enum InitialValue {
     Custom,
     Array(Vec<InitialValue>),
 }
+
+pub const XML_TAG_DATA_TYPE: &str = "DataType";
+pub const XML_TAG_STRUCTURED_TYPE: &str = "StructuredType";
+pub const XML_TAG_VAR_DECLARATION: &str = "VarDeclaration";
+
+pub const XML_ATTRIBUTE_NAME: &str = "Name";
+pub const XML_ATTRIBUTE_TYPE: &str = "Type";
+pub const XML_ATTRIBUTE_ARRAY_SIZE: &str = "ArraySize";
+pub const XML_ATTRIBUTE_INITIAL_VALUE: &str = "InitialValue";
+pub const XML_ATTRIBUTE_COMMENT: &str = "Comment";

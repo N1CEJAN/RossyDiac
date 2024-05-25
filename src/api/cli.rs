@@ -45,8 +45,9 @@ pub fn run() {
                 match error {
                     Error::Custom(_) => ErrorKind::InvalidValue,
                     Error::Io(_) => ErrorKind::Io,
-                    Error::DtpParser(_) => ErrorKind::Format,
-                    Error::MsgParser(_) => ErrorKind::Format,
+                    Error::DtpReader(_) => ErrorKind::Format,
+                    Error::MsgReader(_) => ErrorKind::Format,
+                    Error::DtpWriter(_) => ErrorKind::Io,
                 },
                 error,
             )

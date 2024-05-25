@@ -1,5 +1,4 @@
 use derive_more::From;
-use crate::business::error::Error::MsgParser;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -12,14 +11,16 @@ pub enum Error {
     #[from]
     Io(std::io::Error),
     #[from]
-    DtpParser(xmltree::ParseError),
-    MsgParser(nom::Err<nom::error::Error<String>>),
+    DtpReader(xmltree::ParseError),
+    #[from]
+    DtpWriter(xmltree::Error),
+    MsgReader(nom::Err<nom::error::Error<String>>),
 }
 
 // -- Start: Special From<_> methods
 impl From<nom::Err<nom::error::Error<&str>>> for Error {
     fn from(value: nom::Err<nom::error::Error<&str>>) -> Self {
-        MsgParser(value.to_owned())
+        Self::MsgReader(value.to_owned())
     }
 }
 // -- End: Special From<_> methods
@@ -47,4 +48,3 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 // -- End: Boilerplate
-
