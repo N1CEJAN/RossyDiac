@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<DataType Name="DatatypeName">
+<DataType Name="DataTypeName">
     <VersionInfo
         Organization="private"
         Version="0.0.1"

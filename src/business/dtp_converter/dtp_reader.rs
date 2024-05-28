@@ -14,10 +14,9 @@ pub fn read(path_to_file: &str) -> Result<DataType> {
 
 pub fn parse_data_type(file: std::fs::File) -> Result<DataType> {
     let data_type_element = Element::parse(file)?;
-
     let name = data_type_element
         .attributes
-        .get_key_value(XML_TAG_DATA_TYPE)
+        .get_key_value(XML_ATTRIBUTE_NAME)
         .map(|key_value| key_value.1.clone())
         .ok_or("No \"Name\" attribute found on \"DataType\" element")?;
     let comment = data_type_element
@@ -26,10 +25,7 @@ pub fn parse_data_type(file: std::fs::File) -> Result<DataType> {
         .map(|key_value| key_value.1.clone())
         .unwrap_or("".to_string());
     let data_type_kind = parse_data_type_kind(&data_type_element)?;
-
-    let result = DataType::new(&name, &comment, &data_type_kind);
-    debug!("parse_file with output: {:#?}", result);
-    Ok(result)
+    Ok(DataType::new(&name, &comment, &data_type_kind))
 }
 
 fn parse_data_type_kind(element: &Element) -> Result<DataTypeKind> {
@@ -70,10 +66,7 @@ fn parse_structured_type(element: &Element) -> Result<StructuredType> {
         .map(|comment| comment.1.clone())
         .unwrap_or("".to_string());
     let children = parse_structured_type_children(element)?;
-
-    let result = StructuredType::new(&comment, &children);
-    debug!("parse_file with output: {:#?}", result);
-    Ok(result)
+    Ok(StructuredType::new(&comment, &children))
 }
 
 fn parse_structured_type_children(element: &Element) -> Result<Vec<StructuredTypeChild>> {
@@ -99,7 +92,6 @@ fn parse_structured_type_children(element: &Element) -> Result<Vec<StructuredTyp
             }
         };
     }
-    debug!("parse_structured_type_children with output: {:#?}", result);
     Ok(result)
 }
 
@@ -140,10 +132,7 @@ fn parse_var_declaration(element: &Element) -> Result<VarDeclaration> {
         .get_key_value(XML_ATTRIBUTE_COMMENT)
         .map(|key_value| key_value.1.clone())
         .unwrap_or("".to_string());
-
-    let result = VarDeclaration::new(&name, &base_type, &array_size, &initial_value, &comment);
-    debug!("parse_var_declaration with output: {:#?}", result);
-    Ok(result)
+    Ok(VarDeclaration::new(&name, &base_type, &array_size, &initial_value, &comment))
 }
 
 fn parse_base_type(string: &str) -> BaseType {

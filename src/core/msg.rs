@@ -49,6 +49,21 @@ impl Field {
             initial_value: initial_value.clone(),
         }
     }
+    pub fn base_type(&self) -> &BaseType {
+        &self.base_type
+    }
+    pub fn constraints(&self) -> &Vec<Constraint> {
+        &self.constraints
+    }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn field_type(&self) -> &FieldType {
+        &self.field_type
+    }
+    pub fn initial_value(&self) -> &InitialValue {
+        &self.initial_value
+    }
 }
 
 #[derive(Debug, Clone)]

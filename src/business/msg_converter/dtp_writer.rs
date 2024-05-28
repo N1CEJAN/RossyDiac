@@ -6,14 +6,14 @@ use xmltree::{Element, EmitterConfig, XMLNode};
 use crate::business::error::Result;
 use crate::core::dtp::*;
 
-pub fn write(data_types: Vec<DataType>) -> Result<()> {
+pub fn write(data_types: Vec<DataType>, to_directory: &str) -> Result<()> {
     for data_type in data_types.into_iter() {
         let data_type_name = data_type.name().to_string();
         let custom_data_type_element = create_data_type_element(data_type);
 
         let mut config = EmitterConfig::new();
         config.perform_indent = true;
-        let file = File::create(format!("{data_type_name}.xml"))?;
+        let file = File::create(format!("{to_directory}{data_type_name}.dtp"))?;
         custom_data_type_element.write_with_config(file, config)?;
     }
     Ok(())
