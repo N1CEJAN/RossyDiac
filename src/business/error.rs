@@ -14,16 +14,9 @@ pub enum Error {
     DtpReader(xmltree::ParseError),
     #[from]
     DtpWriter(xmltree::Error),
-    MsgReader(nom::Err<nom::error::Error<String>>),
+    #[from]
+    MsgReader(nom::error::Error<String>),
 }
-
-// -- Start: Special From<_> methods
-impl From<nom::Err<nom::error::Error<&str>>> for Error {
-    fn from(value: nom::Err<nom::error::Error<&str>>) -> Self {
-        Self::MsgReader(value.to_owned())
-    }
-}
-// -- End: Special From<_> methods
 
 // -- Start: Convenience
 impl Error {

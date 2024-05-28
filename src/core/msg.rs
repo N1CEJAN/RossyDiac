@@ -11,12 +11,44 @@ impl StructuredType {
             fields,
         }
     }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn fields(&self) -> &Vec<Field> {
+        &self.fields
+    }
 }
 
 #[derive(Debug, Clone)]
-pub enum Field {
-    Variable(BaseType, Vec<Constraint>, String, Option<InitialValue>),
-    Constant(BaseType, Vec<Constraint>, String, InitialValue),
+pub struct Field {
+    base_type: BaseType,
+    constraints: Vec<Constraint>,
+    name: String,
+    field_type: FieldType,
+    // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
+    // Auflistung: MessageInitialization::ALL
+    // Es wird immer ein InitialValue ermittelt,
+    // weil der Default der C++ Code Generierung
+    // dies auch tut, jedoch gibt es auch einen Opt-Out.
+    initial_value: InitialValue,
+}
+
+impl Field {
+    pub fn new(
+        base_type: &BaseType,
+        constraints: &Vec<Constraint>,
+        name: &str,
+        field_type: &FieldType,
+        initial_value: &InitialValue,
+    ) -> Self {
+        Self {
+            base_type: base_type.clone(),
+            constraints: constraints.clone(),
+            name: name.to_string(),
+            field_type: field_type.clone(),
+            initial_value: initial_value.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -48,6 +80,12 @@ pub enum Constraint {
 }
 
 #[derive(Debug, Clone)]
+pub enum FieldType {
+    Variable,
+    Constant,
+}
+
+#[derive(Debug, Clone)]
 pub enum InitialValue {
     Bool(bool),
     Byte(u8),
@@ -61,7 +99,12 @@ pub enum InitialValue {
     Uint32(u32),
     Int64(i64),
     Uint64(u64),
-    Char(char),
+    // http://design.ros2.org/articles/idl_interface_definition.html
+    // A 8-bit single-byte character with a numerical value
+    // between 0 and 255 (see 7.2.6.2.1)
+    // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
+    // Constructors: [...](note: char fields are considered numeric for C++).
+    Char(u8),
     String(String),
     Wstring(String),
     Custom,
