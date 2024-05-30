@@ -1,8 +1,8 @@
 use log::debug;
 
-use crate::business::dtp_converter::{dtp_converter, dtp_reader, msg_writer};
+use crate::business::dtp_converter::*;
 use crate::business::error::Result;
-use crate::business::msg_converter::{dtp_writer, msg_converter, msg_reader};
+use crate::business::msg_converter::*;
 
 pub fn convert_to_dtp(path_to_file: &str) -> Result<()> {
     todo!()

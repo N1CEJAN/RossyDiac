@@ -40,28 +40,25 @@ fn parse_file(input: &str) -> IResult<&str, Vec<Field>, nom::error::Error<String
 }
 
 fn parse_field(input: &str) -> IResult<&str, Field> {
-    let (input, (base_type, constraints, _, name)) = tuple((
+    let (input, (base_type, constraints, name)) = tuple((
         parse_base_type,
         parse_constraints,
-        multispace1,
-        parse_field_name,
+        preceded(multispace1, parse_field_name),
     ))(input)?;
 
     let (input, optional_tag) = opt(alt((tag("="), tag(" "))))(input)?;
-    let field_type = if optional_tag == Some("=") {
-        FieldType::Constant
-    } else {
-        FieldType::Variable
+    let field_type = match optional_tag {
+        Some("=") => FieldType::Constant,
+        _ => FieldType::Variable,
     };
     // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
     // Auflistung: MessageInitialization::ALL
     // Es wird immer ein InitialValue ermittelt,
     // weil der Default bei der C++ Code Generierung
     // dies auch ist, jedoch gibt es auch einen Opt-Out.
-    let (input, initial_value) = if optional_tag.is_some() {
-        parse_initial_value(&base_type, &constraints)(input)?
-    } else {
-        (input, default_initial_value(&base_type, &constraints))
+    let (input, initial_value) = match optional_tag {
+        Some(_) => parse_initial_value(&base_type, &constraints)(input)?,
+        None => (input, default_initial_value(&base_type, &constraints)),
     };
     Ok((
         input,
