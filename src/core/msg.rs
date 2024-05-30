@@ -25,12 +25,6 @@ pub struct Field {
     constraints: Vec<Constraint>,
     name: String,
     field_type: FieldType,
-    // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
-    // Auflistung: MessageInitialization::ALL
-    // Es wird immer ein InitialValue ermittelt,
-    // weil der Default der C++ Code Generierung
-    // dies auch tut, jedoch gibt es auch einen Opt-Out.
-    initial_value: InitialValue,
 }
 
 impl Field {
@@ -39,14 +33,12 @@ impl Field {
         constraints: &Vec<Constraint>,
         name: &str,
         field_type: &FieldType,
-        initial_value: &InitialValue,
     ) -> Self {
         Self {
             base_type: base_type.clone(),
             constraints: constraints.clone(),
             name: name.to_string(),
             field_type: field_type.clone(),
-            initial_value: initial_value.clone(),
         }
     }
     pub fn base_type(&self) -> &BaseType {
@@ -60,9 +52,6 @@ impl Field {
     }
     pub fn field_type(&self) -> &FieldType {
         &self.field_type
-    }
-    pub fn initial_value(&self) -> &InitialValue {
-        &self.initial_value
     }
 }
 
@@ -96,8 +85,12 @@ pub enum Constraint {
 
 #[derive(Debug, Clone)]
 pub enum FieldType {
-    Variable,
-    Constant,
+    // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
+    // Auflistung: MessageInitialization::ALL
+    // Der Default der C++ Code Generierung generiert immer ein
+    // InitialValue, jedoch gibt es auch einen Opt-Out.
+    Variable(Option<InitialValue>),
+    Constant(InitialValue),
 }
 
 #[derive(Debug, Clone)]

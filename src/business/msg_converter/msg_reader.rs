@@ -42,27 +42,17 @@ fn parse_file(input: &str) -> IResult<&str, Vec<Field>, nom::error::Error<String
 fn parse_field(input: &str) -> IResult<&str, Field> {
     let (input, (base_type, constraints, name)) = tuple((
         parse_base_type,
-        parse_constraints,
+        // Annahme: String Constraints werden
+        // nur mit String Datentypen angegeben
+        many_m_n(0, 2, parse_constraint),
         preceded(multispace1, parse_field_name),
     ))(input)?;
 
-    let (input, optional_tag) = opt(alt((tag("="), tag(" "))))(input)?;
-    let field_type = match optional_tag {
-        Some("=") => FieldType::Constant,
-        _ => FieldType::Variable,
-    };
-    // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
-    // Auflistung: MessageInitialization::ALL
-    // Es wird immer ein InitialValue ermittelt,
-    // weil der Default bei der C++ Code Generierung
-    // dies auch ist, jedoch gibt es auch einen Opt-Out.
-    let (input, initial_value) = match optional_tag {
-        Some(_) => parse_initial_value(&base_type, &constraints)(input)?,
-        None => (input, default_initial_value(&base_type, &constraints)),
-    };
+    let (input, field_type) = parse_field_type(&base_type, &constraints)(input)?;
+
     Ok((
         input,
-        Field::new(&base_type, &constraints, &name, &field_type, &initial_value),
+        Field::new(&base_type, &constraints, &name, &field_type),
     ))
 }
 
@@ -94,11 +84,6 @@ fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
     ))(input)
 }
 
-fn parse_constraints(input: &str) -> IResult<&str, Vec<Constraint>> {
-    // Annahme: String Constraints werden nur mit String Datentypen angegeben
-    many_m_n(0, 2, parse_constraint)(input)
-}
-
 fn parse_constraint(input: &str) -> IResult<&str, Constraint> {
     // Annahne: N ist in jedem Fall durch usize begrenzt
     alt((
@@ -128,6 +113,24 @@ fn parse_field_name(input: &str) -> IResult<&str, &str> {
     verify(decorated2, |s: &str| {
         s.chars().next().unwrap().is_alphabetic()
     })(input)
+}
+
+fn parse_field_type<'a>(
+    base_type: &'a BaseType,
+    constraints: &'a Vec<Constraint>,
+) -> impl FnMut(&'a str) -> IResult<&str, FieldType> + 'a {
+    move |input| {
+        if let (input, Some(tag)) = opt(alt((tag("="), tag(" "))))(input)? {
+            let (input, initial_value) = parse_initial_value(&base_type, &constraints)(input)?;
+            let field_type = match tag {
+                "=" => FieldType::Constant(initial_value),
+                _ => FieldType::Variable(Some(initial_value)),
+            };
+            Ok((input, field_type))
+        } else {
+            Ok((input, FieldType::Variable(None)))
+        }
+    }
 }
 
 fn parse_initial_value<'a>(
@@ -182,86 +185,25 @@ fn parse_initial_value<'a>(
 
 fn parse_quoted_string(input: &str) -> IResult<&str, String> {
     alt((
-        delimited(tag("\""), parse_inner_double_quoted_string, tag("\"")),
-        delimited(tag("'"), parse_inner_single_quoted_string, tag("'")),
+        delimited(tag("\""), parse_inner_string('"'), tag("\"")),
+        delimited(tag("'"), parse_inner_string('\''), tag("'")),
     ))(input)
 }
 
-fn parse_inner_double_quoted_string(input: &str) -> IResult<&str, String> {
-    let mut ret = String::new();
-    let mut skip_delimiter = false;
-    for (i, ch) in input.char_indices() {
-        if ch == '\\' && !skip_delimiter {
-            skip_delimiter = true;
-        } else if ch == '"' && !skip_delimiter {
-            return Ok((&input[i..], ret));
-        } else {
-            ret.push(ch);
-            skip_delimiter = false;
-        }
-    }
-    Err(nom::Err::Incomplete(nom::Needed::Unknown))
-}
-
-fn parse_inner_single_quoted_string(input: &str) -> IResult<&str, String> {
-    let mut ret = String::new();
-    let mut skip_delimiter = false;
-    for (i, ch) in input.char_indices() {
-        if ch == '\\' && !skip_delimiter {
-            skip_delimiter = true;
-        } else if ch == '\'' && !skip_delimiter {
-            return Ok((&input[i..], ret));
-        } else {
-            ret.push(ch);
-            skip_delimiter = false;
-        }
-    }
-    Err(nom::Err::Incomplete(nom::Needed::Unknown))
-}
-
-fn default_initial_value(base_type: &BaseType, constraints: &[Constraint]) -> InitialValue {
-    // Annahme: Nur ein array constraint wird angegeben
-    let optional_array_constraint = constraints
-        .iter()
-        .filter(|c| match c {
-            Constraint::StaticArray(_)
-            | Constraint::UnboundedDynamicArray
-            | Constraint::BoundedDynamicArray(_) => true,
-            Constraint::BoundedString(_) => false,
-        })
-        .next();
-
-    if let Some(array_constraint) = optional_array_constraint {
-        let mut initial_values = Vec::new();
-        if let Constraint::StaticArray(capacity) = array_constraint {
-            for _ in 0..*capacity {
-                initial_values.push(default_initial_value(base_type, &[]))
+fn parse_inner_string(quote: char) -> impl FnMut(&str) -> IResult<&str, String> {
+    move |input: &str| {
+        let mut ret = String::new();
+        let mut skip_delimiter = false;
+        for (i, ch) in input.char_indices() {
+            if ch == '\\' && !skip_delimiter {
+                skip_delimiter = true;
+            } else if ch == quote && !skip_delimiter {
+                return Ok((&input[i..], ret));
+            } else {
+                ret.push(ch);
+                skip_delimiter = false;
             }
         }
-        InitialValue::Array(initial_values)
-    } else {
-        match base_type {
-            BaseType::Bool => InitialValue::Bool(false),
-            BaseType::Byte => InitialValue::Byte(0),
-            BaseType::Float32 => InitialValue::Float32(0f32),
-            BaseType::Float64 => InitialValue::Float64(0f64),
-            BaseType::Int8 => InitialValue::Int8(0),
-            BaseType::Uint8 => InitialValue::Uint8(0),
-            BaseType::Int16 => InitialValue::Int16(0),
-            BaseType::Uint16 => InitialValue::Uint16(0),
-            BaseType::Int32 => InitialValue::Int32(0),
-            BaseType::Uint32 => InitialValue::Uint32(0),
-            BaseType::Int64 => InitialValue::Int64(0),
-            BaseType::Uint64 => InitialValue::Uint64(0),
-            // http://design.ros2.org/articles/idl_interface_definition.html
-            // A 8-bit single-byte character with a numerical value
-            // between 0 and 255 (see 7.2.6.2.1)
-            // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
-            // Constructors: [...](note: char fields are considered numeric for C++).
-            BaseType::Char => InitialValue::Char(0),
-            BaseType::String => InitialValue::String("".to_string()),
-            BaseType::Wstring => InitialValue::Wstring("".to_string()),
-            BaseType::Custom(_) => InitialValue::Custom,
-        }
+        Err(nom::Err::Incomplete(nom::Needed::Unknown))
     }
 }
