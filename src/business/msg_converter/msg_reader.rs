@@ -118,7 +118,7 @@ fn parse_field_name(input: &str) -> IResult<&str, &str> {
 fn parse_field_type<'a>(
     base_type: &'a BaseType,
     constraints: &'a Vec<Constraint>,
-) -> impl FnMut(&'a str) -> IResult<&str, FieldType> + 'a {
+) -> impl FnMut(&str) -> IResult<&str, FieldType> + 'a {
     move |input| {
         if let (input, Some(tag)) = opt(alt((tag("="), tag(" "))))(input)? {
             let (input, initial_value) = parse_initial_value(&base_type, &constraints)(input)?;
@@ -178,7 +178,7 @@ fn parse_initial_value<'a>(
             BaseType::Char => Box::new(map(u8, InitialValue::Char)),
             BaseType::String => Box::new(map(parse_quoted_string, InitialValue::String)),
             BaseType::Wstring => Box::new(map(parse_quoted_string, InitialValue::Wstring)),
-            BaseType::Custom(_) => Box::new(|str| Ok((str, InitialValue::Custom))),
+            BaseType::Custom(_) => unreachable!(),
         }
     }
 }

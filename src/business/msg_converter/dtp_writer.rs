@@ -24,10 +24,11 @@ fn create_data_type_element(data_type: DataType) -> Element {
     data_type_element
         .attributes
         .insert(XML_ATTRIBUTE_NAME.to_string(), data_type.name().to_string());
-    data_type_element.attributes.insert(
-        XML_ATTRIBUTE_COMMENT.to_string(),
-        data_type.comment().to_string(),
-    );
+    if let Some(comment) = data_type.comment() {
+        data_type_element
+            .attributes
+            .insert(XML_ATTRIBUTE_COMMENT.to_string(), comment.clone());
+    }
     data_type_element
         .children
         .push(match data_type.data_type_kind() {
@@ -40,10 +41,11 @@ fn create_data_type_element(data_type: DataType) -> Element {
 
 fn create_structured_type_element(structured_type: &StructuredType) -> XMLNode {
     let mut structured_type_element = Element::new(XML_TAG_STRUCTURED_TYPE);
-    structured_type_element.attributes.insert(
-        XML_ATTRIBUTE_COMMENT.to_string(),
-        structured_type.comment().to_string(),
-    );
+    if let Some(comment) = structured_type.comment() {
+        structured_type_element
+            .attributes
+            .insert(XML_ATTRIBUTE_COMMENT.to_string(), comment.clone());
+    }
     structured_type_element.children.append(
         &mut structured_type
             .children()
@@ -68,18 +70,23 @@ fn create_var_declaration_element(var_declaration: &VarDeclaration) -> XMLNode {
         XML_ATTRIBUTE_TYPE.to_string(),
         base_type_to_string(var_declaration.base_type()),
     );
-    var_declaration_element.attributes.insert(
-        XML_ATTRIBUTE_ARRAY_SIZE.to_string(),
-        array_size_to_string(var_declaration.array_size()),
-    );
-    var_declaration_element.attributes.insert(
-        XML_ATTRIBUTE_INITIAL_VALUE.to_string(),
-        initial_value_to_string(var_declaration.initial_value()),
-    );
-    var_declaration_element.attributes.insert(
-        XML_ATTRIBUTE_COMMENT.to_string(),
-        var_declaration.comment().to_string(),
-    );
+    if let Some(array_size) = var_declaration.array_size() {
+        var_declaration_element.attributes.insert(
+            XML_ATTRIBUTE_ARRAY_SIZE.to_string(),
+            array_size.to_string(),
+        );
+    }
+    if let Some(initial_value) = var_declaration.initial_value() {
+        var_declaration_element.attributes.insert(
+            XML_ATTRIBUTE_INITIAL_VALUE.to_string(),
+            initial_value_to_string(initial_value),
+        );
+    }
+    if let Some(comment) = var_declaration.comment() {
+        var_declaration_element
+            .attributes
+            .insert(XML_ATTRIBUTE_COMMENT.to_string(), comment.clone());
+    }
     XMLNode::Element(var_declaration_element)
 }
 
@@ -112,12 +119,6 @@ fn base_type_to_string(base_type: &BaseType) -> String {
     }
 }
 
-fn array_size_to_string(array_size: &Option<usize>) -> String {
-    array_size
-        .map(|capacity| capacity.to_string())
-        .unwrap_or("".to_string())
-}
-
 fn initial_value_to_string(initial_value: &InitialValue) -> String {
     match initial_value {
         InitialValue::BOOL(bool) => {
@@ -141,15 +142,67 @@ fn initial_value_to_string(initial_value: &InitialValue) -> String {
         InitialValue::WORD(value) => value.to_string(),
         InitialValue::DWORD(value) => value.to_string(),
         InitialValue::LWORD(value) => value.to_string(),
-        InitialValue::STRING(value) => value.to_string(),
-        InitialValue::WSTRING(value) => value.to_string(),
+        InitialValue::STRING(value) => value.to_string(), // TODO: Checken
+        InitialValue::WSTRING(value) => value.to_string(), // TODO: Checken
         InitialValue::TIME(value) => value.to_string(),
         InitialValue::DATE(value) => value.to_string(),
         InitialValue::TIME_OF_DAY(value) => value.to_string(),
         InitialValue::TOD(value) => value.to_string(),
         InitialValue::DATE_AND_TIME(value) => value.to_string(),
         InitialValue::DT(value) => value.to_string(),
-        InitialValue::Custom => "".to_string(),
-        InitialValue::Array(_) => todo!("implement intial value for dtp arrays"),
+        InitialValue::Array(values) => array_of_initial_values_as_string(values),
     }
 }
+
+fn array_of_initial_values_as_string(values: &[InitialValue]) -> String {
+    format!(
+        "{{{}}}",
+        values
+            .iter()
+            .map(initial_value_to_string)
+            .collect::<Vec<String>>()
+            .join(",")
+    )
+}
+
+// fn default_initial_value<'a>(
+//     base_type: &'a BaseType,
+//     array_size: &'a Option<usize>,
+// ) -> Box<dyn FnOnce() -> Result<InitialValue> + 'a> {
+//     if let Some(array_capacity) = array_size {
+//         Box::new(move || {
+//             let mut initial_values = Vec::with_capacity(*array_capacity);
+//             for _ in 0..*array_capacity {
+//                 initial_values.push(default_initial_value(base_type, &None)()?)
+//             }
+//             Ok(InitialValue::Array(initial_values))
+//         })
+//     } else {
+//         match base_type {
+//             BaseType::BOOL => Box::new(|| Ok(InitialValue::BOOL(false))),
+//             BaseType::SINT => Box::new(|| Ok(InitialValue::SINT(0))),
+//             BaseType::INT => Box::new(|| Ok(InitialValue::INT(0))),
+//             BaseType::DINT => Box::new(|| Ok(InitialValue::DINT(0))),
+//             BaseType::LINT => Box::new(|| Ok(InitialValue::LINT(0))),
+//             BaseType::USINT => Box::new(|| Ok(InitialValue::USINT(0))),
+//             BaseType::UINT => Box::new(|| Ok(InitialValue::UINT(0))),
+//             BaseType::UDINT => Box::new(|| Ok(InitialValue::UDINT(0))),
+//             BaseType::ULINT => Box::new(|| Ok(InitialValue::ULINT(0))),
+//             BaseType::REAL => Box::new(|| Ok(InitialValue::REAL(0.0))),
+//             BaseType::LREAL => Box::new(|| Ok(InitialValue::LREAL(0.0))),
+//             BaseType::BYTE => Box::new(|| Ok(InitialValue::BYTE(0))),
+//             BaseType::WORD => Box::new(|| Ok(InitialValue::WORD(0))),
+//             BaseType::DWORD => Box::new(|| Ok(InitialValue::DWORD(0))),
+//             BaseType::LWORD => Box::new(|| Ok(InitialValue::LWORD(0))),
+//             BaseType::STRING => Box::new(|| Ok(InitialValue::STRING(String::new()))),
+//             BaseType::WSTRING => Box::new(|| Ok(InitialValue::WSTRING(String::new()))),
+//             BaseType::TIME => Box::new(|| Ok(InitialValue::TIME(0))),
+//             BaseType::DATE => Box::new(|| Ok(InitialValue::DATE(0))),
+//             BaseType::TIME_OF_DAY => Box::new(|| Ok(InitialValue::TIME_OF_DAY(0))),
+//             BaseType::TOD => Box::new(|| Ok(InitialValue::TOD(0))),
+//             BaseType::DATE_AND_TIME => Box::new(|| Ok(InitialValue::DATE_AND_TIME(0))),
+//             BaseType::DT => Box::new(|| Ok(InitialValue::DT(0))),
+//             BaseType::Custom(_) => Box::new(|| Ok(InitialValue::Custom)),
+//         }
+//     }
+// }

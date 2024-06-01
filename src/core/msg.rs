@@ -115,6 +115,5 @@ pub enum InitialValue {
     Char(u8),
     String(String),
     Wstring(String),
-    Custom,
     Array(Vec<InitialValue>),
 }

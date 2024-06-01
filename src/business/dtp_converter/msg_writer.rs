@@ -114,19 +114,19 @@ fn initial_value_as_string(initial_value: &InitialValue) -> String {
         InitialValue::Char(value) => value.to_string(),
         InitialValue::String(value) => format!("\"{}\"", value.replace("\"", "\\\"")),
         InitialValue::Wstring(value) => format!("\"{}\"", value.replace("\"", "\\\"")),
-        InitialValue::Custom => "".to_string(),
-        InitialValue::Array(values) => {
-            format!("[{}]", array_of_initial_values_as_string(values))
-        }
+        InitialValue::Array(values) => array_of_initial_values_as_string(values),
     }
 }
 
 fn array_of_initial_values_as_string(values: &[InitialValue]) -> String {
-    values
-        .iter()
-        .map(initial_value_as_string)
-        .collect::<Vec<String>>()
-        .join(",")
+    format!(
+        "[{}]",
+        values
+            .iter()
+            .map(initial_value_as_string)
+            .collect::<Vec<String>>()
+            .join(",")
+    )
 }
 
 // fn default_initial_value(base_type: &BaseType, constraints: &[Constraint]) -> InitialValue {

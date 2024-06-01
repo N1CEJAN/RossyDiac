@@ -1,4 +1,4 @@
-use log::{debug, info};
+use log::info;
 use xmltree::{Element, XMLNode};
 
 use crate::business::error::{Error, Result};
@@ -22,8 +22,7 @@ pub fn parse_data_type(file: std::fs::File) -> Result<DataType> {
     let comment = data_type_element
         .attributes
         .get_key_value(XML_ATTRIBUTE_COMMENT)
-        .map(|key_value| key_value.1.clone())
-        .unwrap_or("".to_string());
+        .map(|key_value| key_value.1.clone());
     let data_type_kind = parse_data_type_kind(&data_type_element)?;
     Ok(DataType::new(&name, &comment, &data_type_kind))
 }
@@ -63,8 +62,7 @@ fn parse_structured_type(element: &Element) -> Result<StructuredType> {
     let comment = element
         .attributes
         .get_key_value(XML_ATTRIBUTE_COMMENT)
-        .map(|comment| comment.1.clone())
-        .unwrap_or("".to_string());
+        .map(|comment| comment.1.clone());
     let children = parse_structured_type_children(element)?;
     Ok(StructuredType::new(&comment, &children))
 }
@@ -126,12 +124,11 @@ fn parse_var_declaration(element: &Element) -> Result<VarDeclaration> {
         .get_key_value(XML_ATTRIBUTE_INITIAL_VALUE)
         .map(|key_value| key_value.1.clone())
         .map(|value| parse_initial_value(&base_type, &array_size)(value.as_str()))
-        .unwrap_or_else(default_initial_value(&base_type, &array_size))?;
+        .transpose()?;
     let comment = element
         .attributes
         .get_key_value(XML_ATTRIBUTE_COMMENT)
-        .map(|key_value| key_value.1.clone())
-        .unwrap_or("".to_string());
+        .map(|key_value| key_value.1.clone());
     Ok(VarDeclaration::new(&name, &base_type, &array_size, &initial_value, &comment))
 }
 
@@ -178,19 +175,23 @@ macro_rules! parse_primitive_initial_value {
     };
 }
 
-fn parse_initial_value(
-    base_type: &BaseType,
-    array_size: &Option<usize>,
-) -> Box<dyn FnMut(&str) -> Result<InitialValue>> {
-    if let Some(_) = array_size {
-        // Box::new(move || {
-        //     let mut initial_values = Vec::with_capacity(*array_capacity);
-        //     for _ in 0..*array_capacity {
-        //         initial_values.push(default_initial_value(base_type, &None)())
-        //     }
-        //     InitialValue::Array(initial_values)
-        // })
-        todo!()
+fn parse_initial_value<'a>(
+    base_type: &'a BaseType,
+    array_size: &'a Option<usize>,
+) -> Box<dyn FnMut(&str) -> Result<InitialValue> + 'a> {
+    if let Some(capacity) = array_size {
+        Box::new(move |str| {
+            let trimmmed = str.trim();
+            if !trimmmed.starts_with('{') || !trimmmed.ends_with('}') {
+                return Err("Initial value of array types must be delimitied with '{}'".into());
+            }
+            let inner_str = &trimmmed[1..trimmmed.len() - 1];
+            let mut values = Vec::with_capacity(*capacity);
+            for asdf in inner_str.split(',') {
+                values.push(parse_initial_value(base_type, &None)(asdf)?)
+            }
+            Ok(InitialValue::Array(values))
+        })
     } else {
         match base_type {
             BaseType::BOOL => parse_primitive_initial_value!(BOOL),
@@ -216,49 +217,7 @@ fn parse_initial_value(
             BaseType::TOD => parse_primitive_initial_value!(TOD),
             BaseType::DATE_AND_TIME => parse_primitive_initial_value!(DATE_AND_TIME),
             BaseType::DT => parse_primitive_initial_value!(DT),
-            BaseType::Custom(_) => Box::new(|_| Ok(InitialValue::Custom)),
-        }
-    }
-}
-
-fn default_initial_value<'a>(
-    base_type: &'a BaseType,
-    array_size: &'a Option<usize>,
-) -> Box<dyn FnOnce() -> Result<InitialValue> + 'a> {
-    if let Some(array_capacity) = array_size {
-        Box::new(move || {
-            let mut initial_values = Vec::with_capacity(*array_capacity);
-            for _ in 0..*array_capacity {
-                initial_values.push(default_initial_value(base_type, &None)()?)
-            }
-            Ok(InitialValue::Array(initial_values))
-        })
-    } else {
-        match base_type {
-            BaseType::BOOL => Box::new(|| Ok(InitialValue::BOOL(false))),
-            BaseType::SINT => Box::new(|| Ok(InitialValue::SINT(0))),
-            BaseType::INT => Box::new(|| Ok(InitialValue::INT(0))),
-            BaseType::DINT => Box::new(|| Ok(InitialValue::DINT(0))),
-            BaseType::LINT => Box::new(|| Ok(InitialValue::LINT(0))),
-            BaseType::USINT => Box::new(|| Ok(InitialValue::USINT(0))),
-            BaseType::UINT => Box::new(|| Ok(InitialValue::UINT(0))),
-            BaseType::UDINT => Box::new(|| Ok(InitialValue::UDINT(0))),
-            BaseType::ULINT => Box::new(|| Ok(InitialValue::ULINT(0))),
-            BaseType::REAL => Box::new(|| Ok(InitialValue::REAL(0.0))),
-            BaseType::LREAL => Box::new(|| Ok(InitialValue::LREAL(0.0))),
-            BaseType::BYTE => Box::new(|| Ok(InitialValue::BYTE(0))),
-            BaseType::WORD => Box::new(|| Ok(InitialValue::WORD(0))),
-            BaseType::DWORD => Box::new(|| Ok(InitialValue::DWORD(0))),
-            BaseType::LWORD => Box::new(|| Ok(InitialValue::LWORD(0))),
-            BaseType::STRING => Box::new(|| Ok(InitialValue::STRING(String::new()))),
-            BaseType::WSTRING => Box::new(|| Ok(InitialValue::WSTRING(String::new()))),
-            BaseType::TIME => Box::new(|| Ok(InitialValue::TIME(0))),
-            BaseType::DATE => Box::new(|| Ok(InitialValue::DATE(0))),
-            BaseType::TIME_OF_DAY => Box::new(|| Ok(InitialValue::TIME_OF_DAY(0))),
-            BaseType::TOD => Box::new(|| Ok(InitialValue::TOD(0))),
-            BaseType::DATE_AND_TIME => Box::new(|| Ok(InitialValue::DATE_AND_TIME(0))),
-            BaseType::DT => Box::new(|| Ok(InitialValue::DT(0))),
-            BaseType::Custom(_) => Box::new(|| Ok(InitialValue::Custom)),
+            BaseType::Custom(_) => unreachable!(),
         }
     }
 }

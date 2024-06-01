@@ -1,7 +1,9 @@
+#![allow(non_camel_case_types)]
+
 #[derive(Clone, Debug)]
 pub struct DataType {
     name: String,
-    comment: String,
+    comment: Option<String>,
     // identification: Option<Identification>,
     // version_info: Vec<VersionInfo>,
     // compiler_info: Option<CompilerInfo>,
@@ -10,14 +12,14 @@ pub struct DataType {
 }
 
 impl DataType {
-    pub fn new(name: &str, comment: &str, data_type_kind: &DataTypeKind) -> Self {
+    pub fn new(name: &str, comment: &Option<String>, data_type_kind: &DataTypeKind) -> Self {
         Self {
             name: name.to_string(),
-            comment: comment.to_string(),
+            comment: comment.clone(),
             data_type_kind: data_type_kind.clone(),
         }
     }
-    pub fn comment(&self) -> &str {
+    pub fn comment(&self) -> &Option<String> {
         &self.comment
     }
     pub fn name(&self) -> &str {
@@ -53,18 +55,18 @@ impl DataTypeKind {
 
 #[derive(Clone, Debug)]
 pub struct StructuredType {
-    comment: String,
+    comment: Option<String>,
     children: Vec<StructuredTypeChild>,
 }
 
 impl StructuredType {
-    pub fn new(comment: &str, children: &[StructuredTypeChild]) -> Self {
+    pub fn new(comment: &Option<String>, children: &[StructuredTypeChild]) -> Self {
         Self {
-            comment: comment.to_string(),
+            comment: comment.clone(),
             children: children.to_vec(),
         }
     }
-    pub fn comment(&self) -> &str {
+    pub fn comment(&self) -> &Option<String> {
         &self.comment
     }
     pub fn children(&self) -> &Vec<StructuredTypeChild> {
@@ -93,9 +95,10 @@ impl StructuredTypeChild {
 pub struct VarDeclaration {
     name: String,
     base_type: BaseType,
+    // https://bugs.eclipse.org/bugs/show_bug.cgi?id=581888
     array_size: Option<usize>,
-    initial_value: InitialValue,
-    comment: String,
+    initial_value: Option<InitialValue>,
+    comment: Option<String>,
 }
 
 impl VarDeclaration {
@@ -103,15 +106,15 @@ impl VarDeclaration {
         name: &str,
         base_type: &BaseType,
         array_size: &Option<usize>,
-        initial_value: &InitialValue,
-        comment: &str,
+        initial_value: &Option<InitialValue>,
+        comment: &Option<String>,
     ) -> Self {
         Self {
             name: name.to_string(),
             base_type: base_type.clone(),
-            array_size: *array_size,
+            array_size: array_size.clone(),
             initial_value: initial_value.clone(),
-            comment: comment.to_string(),
+            comment: comment.clone(),
         }
     }
     pub fn name(&self) -> &str {
@@ -123,10 +126,10 @@ impl VarDeclaration {
     pub fn array_size(&self) -> &Option<usize> {
         &self.array_size
     }
-    pub fn initial_value(&self) -> &InitialValue {
+    pub fn initial_value(&self) -> &Option<InitialValue> {
         &self.initial_value
     }
-    pub fn comment(&self) -> &str {
+    pub fn comment(&self) -> &Option<String> {
         &self.comment
     }
 }
@@ -184,7 +187,6 @@ pub enum InitialValue {
     TOD(u64),
     DATE_AND_TIME(u64),
     DT(u64),
-    Custom,
     Array(Vec<InitialValue>),
 }
 
