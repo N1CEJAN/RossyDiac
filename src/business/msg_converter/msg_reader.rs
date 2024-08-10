@@ -15,14 +15,17 @@ use nom::{Finish, IResult};
 use crate::business::error::Result;
 use crate::core::msg::*;
 
-pub fn read(path_to_file: &str) -> Result<StructuredType> {
+pub fn read(
+    path_to_file: &str,
+    path_to_source_directories: &Vec<String>,
+) -> Result<Vec<StructuredType>> {
     info!("Start reading file {:?}", path_to_file);
     let file_name = parse_file_name(path_to_file)?;
     let file_content = std::fs::read_to_string(path_to_file)?;
     let parsed_fields = parse_file(&file_content).finish()?.1;
     let structured_type = StructuredType::new(&file_name, parsed_fields);
     info!("Finished reading file {:?}", path_to_file);
-    Ok(structured_type)
+    Ok(vec![structured_type])
 }
 
 fn parse_file_name(path_to_file: &str) -> Result<String> {
