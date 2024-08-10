@@ -73,7 +73,10 @@ fn create_var_declaration_element(var_declaration: &VarDeclaration) -> XMLNode {
     if let Some(array_size) = var_declaration.array_size() {
         var_declaration_element.attributes.insert(
             XML_ATTRIBUTE_ARRAY_SIZE.to_string(),
-            array_size.to_string(),
+            match array_size {
+                ArraySize::Dynamic => String::from('*'),
+                ArraySize::Static(capacity) => capacity.to_string(),
+            },
         );
     }
     if let Some(initial_value) = var_declaration.initial_value() {

@@ -162,8 +162,13 @@ fn parse_base_type(string: &str) -> BaseType {
     }
 }
 
-fn parse_array_size(input: &str) -> Result<usize> {
-    input.parse().map_err(Error::custom)
+fn parse_array_size(input: &str) -> Result<ArraySize> {
+    if input == "*" {
+        Ok(ArraySize::Dynamic)
+    } else {
+        let result = input.parse().map_err(Error::custom)?;
+        Ok(ArraySize::Static(result))
+    }
 }
 
 macro_rules! parse_primitive_initial_value {
@@ -178,19 +183,21 @@ macro_rules! parse_primitive_initial_value {
 
 fn parse_initial_value<'a>(
     base_type: &'a BaseType,
-    array_size: &'a Option<usize>,
+    array_size: &'a Option<ArraySize>,
 ) -> Box<dyn FnMut(&str) -> Result<InitialValue> + 'a> {
-    if let Some(capacity) = array_size {
+    if let Some(array_size) = array_size {
         Box::new(move |str| {
             let trimmmed = str.trim();
-            if !trimmmed.starts_with('{') || !trimmmed.ends_with('}') {
-                return Err("Initial value of array types must be delimitied with '{}'".into());
+            if !(trimmmed.starts_with('[') && trimmmed.ends_with(']')) {
+                return match array_size {
+                    ArraySize::Dynamic => Ok(InitialValue::Array(Vec::new())),
+                    ArraySize::Static(_) => Err("Static arrays must use '[]'".into()),
+                };
             }
-            let inner_str = &trimmmed[1..trimmmed.len() - 1];
-            let mut values = Vec::with_capacity(*capacity);
-            for asdf in inner_str.split(',') {
-                values.push(parse_initial_value(base_type, &None)(asdf)?)
-            }
+            let values = trimmmed[1..trimmmed.len() - 1]
+                .split(',')
+                .map(|value| parse_initial_value(base_type, &None)(value.trim()))
+                .collect::<Result<Vec<_>>>()?;
             Ok(InitialValue::Array(values))
         })
     } else {

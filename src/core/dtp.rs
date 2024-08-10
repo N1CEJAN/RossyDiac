@@ -96,7 +96,7 @@ pub struct VarDeclaration {
     name: String,
     base_type: BaseType,
     // https://bugs.eclipse.org/bugs/show_bug.cgi?id=581888
-    array_size: Option<usize>,
+    array_size: Option<ArraySize>,
     initial_value: Option<InitialValue>,
     comment: Option<String>,
 }
@@ -105,7 +105,7 @@ impl VarDeclaration {
     pub fn new(
         name: &str,
         base_type: &BaseType,
-        array_size: &Option<usize>,
+        array_size: &Option<ArraySize>,
         initial_value: &Option<InitialValue>,
         comment: &Option<String>,
     ) -> Self {
@@ -123,7 +123,7 @@ impl VarDeclaration {
     pub fn base_type(&self) -> &BaseType {
         &self.base_type
     }
-    pub fn array_size(&self) -> &Option<usize> {
+    pub fn array_size(&self) -> &Option<ArraySize> {
         &self.array_size
     }
     pub fn initial_value(&self) -> &Option<InitialValue> {
@@ -162,6 +162,12 @@ pub enum BaseType {
     DATE_AND_TIME,
     DT,
     Custom(String),
+}
+
+#[derive(Clone, Debug)]
+pub enum ArraySize {
+    Dynamic,
+    Static(usize)
 }
 
 #[derive(Clone, Debug)]
