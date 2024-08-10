@@ -83,7 +83,7 @@ pub enum Constraint {
     BoundedDynamicArray(usize),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FieldType {
     // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
     // Auflistung: MessageInitialization::ALL
@@ -93,7 +93,7 @@ pub enum FieldType {
     Constant(InitialValue),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum InitialValue {
     Bool(bool),
     Byte(u8),
