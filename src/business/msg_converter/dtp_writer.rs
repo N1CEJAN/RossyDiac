@@ -107,6 +107,7 @@ fn base_type_to_string(base_type: &BaseType) -> String {
         BaseType::WORD => "WORD".to_string(),
         BaseType::DWORD => "DWORD".to_string(),
         BaseType::LWORD => "LWORD".to_string(),
+        BaseType::CHAR => "CHAR".to_string(),
         BaseType::STRING => "STRING".to_string(),
         BaseType::WSTRING => "WSTRING".to_string(),
         BaseType::TIME => "TIME".to_string(),
@@ -142,6 +143,7 @@ fn initial_value_to_string(initial_value: &InitialValue) -> String {
         InitialValue::WORD(value) => value.to_string(),
         InitialValue::DWORD(value) => value.to_string(),
         InitialValue::LWORD(value) => value.to_string(),
+        InitialValue::CHAR(value) => value.to_string(),
         InitialValue::STRING(value) => value.to_string(), // TODO: Checken
         InitialValue::WSTRING(value) => value.to_string(), // TODO: Checken
         InitialValue::TIME(value) => value.to_string(),

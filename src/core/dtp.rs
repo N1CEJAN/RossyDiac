@@ -151,6 +151,8 @@ pub enum BaseType {
     WORD,
     DWORD,
     LWORD,
+    // Der Einfachheit halber wird CHAR von 4diac aufgenommen
+    CHAR,
     STRING,
     WSTRING,
     TIME,
@@ -179,6 +181,8 @@ pub enum InitialValue {
     WORD(u16),
     DWORD(u32),
     LWORD(u64),
+    // Der Einfachheit halber wird CHAR von 4diac aufgenommen
+    CHAR(u8),
     STRING(String),
     WSTRING(String),
     TIME(i64),
