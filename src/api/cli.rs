@@ -28,22 +28,6 @@ enum Command {
         #[arg(short = 'f', long = "file")]
         path_to_dtp_file: String,
     },
-    /// For testing: Read a DTP file
-    ReadDtp,
-    /// For testing: Read a MSG file
-    ReadMsg,
-    /// For testing: Write a DTP file
-    WriteDtp {
-        /// The directory to write the dtp structures to
-        #[arg(short = 'd', long = "directory")]
-        path_to_folder: String,
-    },
-    /// For testing: Write a MSG file
-    WriteMsg {
-        /// The directory to write the msg structures to
-        #[arg(short = 'd', long = "directory")]
-        path_to_folder: String,
-    },
 }
 
 pub fn run() {
@@ -53,10 +37,6 @@ pub fn run() {
     let result = match cli.command {
         Command::ConvertToDtp { path_to_msg_file } => convert_to_dtp(&path_to_msg_file),
         Command::ConvertToMsg { path_to_dtp_file } => convert_to_msg(&path_to_dtp_file),
-        Command::ReadDtp => read_dtp(),
-        Command::ReadMsg => read_msg(),
-        Command::WriteDtp { path_to_folder } => write_dtp(&path_to_folder),
-        Command::WriteMsg { path_to_folder } => write_msg(&path_to_folder),
     };
 
     if let Err(error) = result {
