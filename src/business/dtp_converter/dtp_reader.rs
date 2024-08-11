@@ -4,15 +4,12 @@ use xmltree::{Element, XMLNode};
 use crate::business::error::{Error, Result};
 use crate::core::dtp::*;
 
-pub fn read(
-    path_to_file: &str,
-    path_to_source_directories: &Vec<String>
-) -> Result<Vec<DataType>> {
+pub fn read(path_to_file: &str) -> Result<DataType> {
     info!("Start reading file {:?}", path_to_file);
     let file = std::fs::File::open(path_to_file)?;
     let data_type = parse_data_type(file)?;
     info!("Finished reading file {:?}", path_to_file);
-    Ok(vec![data_type])
+    Ok(data_type)
 }
 
 pub fn parse_data_type(file: std::fs::File) -> Result<DataType> {

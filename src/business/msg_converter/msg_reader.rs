@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use log::info;
@@ -15,27 +16,25 @@ use nom::{Finish, IResult};
 use crate::business::error::Result;
 use crate::core::msg::*;
 
-pub fn read(
-    path_to_file: &str,
-    path_to_source_directories: &Vec<String>,
-) -> Result<Vec<StructuredType>> {
-    info!("Start reading file {:?}", path_to_file);
-    let file_name = parse_file_name(path_to_file)?;
-    let file_content = std::fs::read_to_string(path_to_file)?;
+pub fn read(path_to_source_file: &str) -> Result<StructuredType> {
+    info!("Start reading file {:?}", path_to_source_file);
+    let source_file_path = Path::new(path_to_source_file);
+    let file_name = parse_file_name(source_file_path)?;
+    let file_content = std::fs::read_to_string(source_file_path)?;
     let parsed_fields = parse_file(&file_content).finish()?.1;
     let structured_type = StructuredType::new(&file_name, parsed_fields);
-    info!("Finished reading file {:?}", path_to_file);
-    Ok(vec![structured_type])
+    info!("Finished reading file {:?}", path_to_source_file);
+    Ok(structured_type)
 }
 
-fn parse_file_name(path_to_file: &str) -> Result<String> {
-    let path = Path::new(path_to_file);
-    Ok(path
+fn parse_file_name(path_to_file: &Path) -> Result<String> {
+    let file_name = path_to_file
         .file_stem()
         .map(|os_str| os_str.to_str())
         .flatten()
         .map(|str| str.to_string())
-        .ok_or("Could not read file name from file path")?)
+        .ok_or("Could not read file name from file path")?;
+    Ok(file_name)
 }
 
 fn parse_file(input: &str) -> IResult<&str, Vec<Field>, nom::error::Error<String>> {

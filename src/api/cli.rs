@@ -21,9 +21,6 @@ enum Command {
         /// The file to convert
         #[arg(short = 'f', long = "file")]
         path_to_msg_file: String,
-        /// The directories to search when resolving references
-        #[arg(short = 's', long = "source-directories")]
-        path_to_source_directories: Vec<String>,
         /// The directory where the conversion result will be written
         #[arg(short = 'd', long = "destination-directory")]
         path_to_destination_directory: String,
@@ -33,9 +30,6 @@ enum Command {
         /// The file to convert
         #[arg(short = 'f', long = "file")]
         path_to_dtp_file: String,
-        /// The directories to search when resolving references
-        #[arg(short = 's', long = "source-directories")]
-        path_to_source_directories: Vec<String>,
         /// The directory where the conversion result will be written
         #[arg(short = 'd', long = "destination-directory")]
         path_to_destination_directory: String,
@@ -49,22 +43,12 @@ pub fn run() {
     let result = match cli.command {
         Command::ConvertToDtp {
             path_to_msg_file,
-            path_to_source_directories,
             path_to_destination_directory,
-        } => convert_to_dtp(
-            &path_to_msg_file,
-            &path_to_source_directories,
-            &path_to_destination_directory,
-        ),
+        } => convert_to_dtp(&path_to_msg_file, &path_to_destination_directory),
         Command::ConvertToMsg {
             path_to_dtp_file,
-            path_to_source_directories,
             path_to_destination_directory,
-        } => convert_to_msg(
-            &path_to_dtp_file,
-            &path_to_source_directories,
-            &path_to_destination_directory,
-        ),
+        } => convert_to_msg(&path_to_dtp_file, &path_to_destination_directory),
     };
 
     if let Err(error) = result {

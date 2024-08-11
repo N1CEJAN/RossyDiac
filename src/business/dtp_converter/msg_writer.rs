@@ -3,13 +3,11 @@ use std::fs;
 use crate::business::error::Result;
 use crate::core::msg::{BaseType, Constraint, Field, FieldType, InitialValue, StructuredType};
 
-pub fn write(msg_dtos: Vec<StructuredType>, to_directory: &str) -> Result<()> {
-    for msg_dto in msg_dtos.iter() {
-        let file_name = msg_dto.name();
-        let path_to_file = format!("{to_directory}{file_name}.msg");
-        let file_content: String = msg_dto_as_string(msg_dto);
-        fs::write(path_to_file, file_content)?
-    }
+pub fn write(msg_dto: &StructuredType, to_directory: &str) -> Result<()> {
+    let file_name = msg_dto.name();
+    let path_to_file = format!("{to_directory}{file_name}.msg");
+    let file_content: String = msg_dto_as_string(msg_dto);
+    fs::write(path_to_file, file_content)?;
     Ok(())
 }
 

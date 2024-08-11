@@ -4,16 +4,7 @@ use crate::core::dtp::{ArraySize, DataType, DataTypeKind, StructuredTypeChild, V
 use crate::core::msg;
 use crate::core::msg::{Constraint, Field, FieldType, StructuredType};
 
-pub fn convert(structured_types: Vec<StructuredType>) -> Result<Vec<DataType>> {
-    let mut result = Vec::new();
-    for structured_type in structured_types.iter() {
-        let data_type = convert_structured_type(structured_type)?;
-        result.push(data_type);
-    }
-    Ok(result)
-}
-
-fn convert_structured_type(structured_type: &StructuredType) -> Result<DataType> {
+pub fn convert(structured_type: &StructuredType) -> Result<DataType> {
     let name = structured_type.name().to_string();
     let mut structured_type_children = Vec::new();
     for field in structured_type.fields().iter() {

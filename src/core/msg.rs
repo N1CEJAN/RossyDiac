@@ -72,7 +72,13 @@ pub enum BaseType {
     Char,
     String,
     Wstring,
-    Custom(String),
+    Custom(Reference),
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum Reference {
+    Relative { file: String },
+    Absolute { package: String, file: String },
 }
 
 #[derive(Debug, Clone)]
