@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::Path;
 
 use log::info;
@@ -8,7 +7,7 @@ use nom::character::complete::{
     digit1, i16, i32, i64, i8, line_ending, multispace1, u16, u32, u64, u8,
 };
 use nom::combinator::{eof, map, opt, verify};
-use nom::multi::{many0, many_m_n, separated_list0};
+use nom::multi::{many0, separated_list0};
 use nom::number::complete::{double, float};
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::{Finish, IResult};
@@ -42,19 +41,17 @@ fn parse_file(input: &str) -> IResult<&str, Vec<Field>, nom::error::Error<String
 }
 
 fn parse_field(input: &str) -> IResult<&str, Field> {
-    let (input, (base_type, constraints, name)) = tuple((
+    let (input, (base_type, optional_constraint, name)) = tuple((
         parse_base_type,
-        // Annahme: String Constraints werden
-        // nur mit String Datentypen angegeben
-        many_m_n(0, 2, parse_constraint),
+        opt(parse_constraint),
         preceded(multispace1, parse_field_name),
     ))(input)?;
 
-    let (input, field_type) = parse_field_type(&base_type, &constraints)(input)?;
+    let (input, field_type) = parse_field_type(&base_type, &optional_constraint)(input)?;
 
     Ok((
         input,
-        Field::new(&base_type, &constraints, &name, &field_type),
+        Field::new(&base_type, &optional_constraint, &name, &field_type),
     ))
 }
 
@@ -77,11 +74,20 @@ fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
         map(tag("int64"), |_| BaseType::Int64),
         map(tag("uint64"), |_| BaseType::Uint64),
         map(tag("char"), |_| BaseType::Char),
-        map(tag("string"), |_| BaseType::String),
+        map(
+            tuple((tag("string"), opt(preceded(tag("<="), digit1)))),
+            |(_, optional_bound): (&str, Option<&str>)| {
+                BaseType::String(optional_bound.map(|digits| digits.parse().unwrap()))
+            },
+        ),
         map(tag("wstring"), |_| BaseType::Wstring),
         map(
             alt((take_until1(" "), take_until1("["))),
-            |custom_type: &str| BaseType::Custom(custom_type.to_string()),
+            |custom_type: &str| {
+                BaseType::Custom(Reference::Relative {
+                    file: custom_type.to_string(),
+                })
+            },
         ),
     ))(input)
 }
@@ -97,10 +103,6 @@ fn parse_constraint(input: &str) -> IResult<&str, Constraint> {
         map(delimited(tag("["), digit1, tag("]")), |digits: &str| {
             let casted = digits.parse().unwrap();
             Constraint::StaticArray(casted)
-        }),
-        map(preceded(tag("<="), digit1), |digits: &str| {
-            let casted = digits.parse().unwrap();
-            Constraint::BoundedString(casted)
         }),
     ))(input)
 }
@@ -119,11 +121,11 @@ fn parse_field_name(input: &str) -> IResult<&str, &str> {
 
 fn parse_field_type<'a>(
     base_type: &'a BaseType,
-    constraints: &'a Vec<Constraint>,
+    constraint: &'a Option<Constraint>,
 ) -> impl FnMut(&str) -> IResult<&str, FieldType> + 'a {
     move |input| {
         if let (input, Some(tag)) = opt(alt((tag("="), tag(" "))))(input)? {
-            let (input, initial_value) = parse_initial_value(&base_type, &constraints)(input)?;
+            let (input, initial_value) = parse_initial_value(&base_type, &constraint)(input)?;
             let field_type = match tag {
                 "=" => FieldType::Constant(initial_value),
                 _ => FieldType::Variable(Some(initial_value)),
@@ -137,20 +139,13 @@ fn parse_field_type<'a>(
 
 fn parse_initial_value<'a>(
     datatype: &BaseType,
-    constraints: &[Constraint],
+    optional_constraint: &Option<Constraint>,
 ) -> Box<dyn FnMut(&'a str) -> IResult<&str, InitialValue> + 'a> {
-    let is_array = constraints.iter().any(|c| match c {
-        Constraint::StaticArray(_)
-        | Constraint::UnboundedDynamicArray
-        | Constraint::BoundedDynamicArray(_) => true,
-        Constraint::BoundedString(_) => false,
-    });
-
-    if is_array {
+    if optional_constraint.is_some() {
         Box::new(map(
             delimited(
                 tag("["),
-                separated_list0(tag(","), parse_initial_value(datatype, &[])),
+                separated_list0(tag(","), parse_initial_value(datatype, &None)),
                 tag("]"),
             ),
             InitialValue::Array,
@@ -178,7 +173,8 @@ fn parse_initial_value<'a>(
             // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
             // Constructors: [...](note: char fields are considered numeric for C++).
             BaseType::Char => Box::new(map(u8, InitialValue::Char)),
-            BaseType::String => Box::new(map(parse_quoted_string, InitialValue::String)),
+            // assume defined initial value is correct, due to time constraints
+            BaseType::String(_) => Box::new(map(parse_quoted_string, InitialValue::String)),
             BaseType::Wstring => Box::new(map(parse_quoted_string, InitialValue::Wstring)),
             BaseType::Custom(_) => unreachable!(),
         }

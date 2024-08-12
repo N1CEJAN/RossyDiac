@@ -2,7 +2,7 @@ use crate::business::error::Result;
 use crate::core::dtp;
 use crate::core::dtp::{ArraySize, DataType, DataTypeKind, StructuredTypeChild, VarDeclaration};
 use crate::core::msg;
-use crate::core::msg::{Constraint, Field, FieldType, StructuredType};
+use crate::core::msg::{Constraint, Field, FieldType, Reference, StructuredType};
 
 pub fn convert(structured_type: &StructuredType) -> Result<DataType> {
     let name = structured_type.name().to_string();
@@ -18,70 +18,10 @@ pub fn convert(structured_type: &StructuredType) -> Result<DataType> {
 
 fn convert_field(field: &Field) -> Result<Vec<StructuredTypeChild>> {
     let mut structured_type_children = Vec::new();
-
     let mut var_name = field.name().to_string();
-    let base_type = convert_base_type(field.base_type());
-
-    // handle constraints
-    let mut array_size: Option<ArraySize> = None;
-    for constraint in field.constraints().iter() {
-        match constraint {
-            Constraint::StaticArray(capacity) => {
-                array_size = Some(ArraySize::Static(*capacity));
-            }
-            Constraint::UnboundedDynamicArray => {
-                array_size = Some(ArraySize::Dynamic);
-            }
-            Constraint::BoundedDynamicArray(array_bound) => {
-                array_size = Some(ArraySize::Dynamic);
-                structured_type_children.push(StructuredTypeChild::VarDeclaration(
-                    VarDeclaration::new(
-                        &format!("{}_array_bound", var_name),
-                        &dtp::BaseType::ULINT,
-                        &None,
-                        &Some(dtp::InitialValue::ULINT(*array_bound as u64)),
-                        &None,
-                    ),
-                ));
-            }
-            Constraint::BoundedString(string_bound) => {
-                structured_type_children.push(StructuredTypeChild::VarDeclaration(
-                    VarDeclaration::new(
-                        &format!("{}_string_bound", var_name),
-                        &dtp::BaseType::ULINT,
-                        &None,
-                        &Some(dtp::InitialValue::ULINT(*string_bound as u64)),
-                        &None,
-                    ),
-                ));
-            }
-        }
-    }
-
-    // handle initial value
-    let optional_initial_value = match field.field_type() {
-        FieldType::Variable(optional_initial_value) => {
-            convert_optional_initial_value(optional_initial_value, field)
-        }
-        FieldType::Constant(initial_value) => {
-            var_name += "_CONSTANT";
-            structured_type_children.clear();
-            Some(convert_initial_value(initial_value, field))
-        }
-    };
     
-    structured_type_children.push(StructuredTypeChild::VarDeclaration(VarDeclaration::new(
-        &var_name,
-        &base_type,
-        &array_size,
-        &optional_initial_value,
-        &None,
-    )));
-    Ok(structured_type_children)
-}
-
-fn convert_base_type(base_type: &msg::BaseType) -> dtp::BaseType {
-    match base_type {
+    // handle BaseType
+    let base_type = match field.base_type() {
         msg::BaseType::Bool => dtp::BaseType::BOOL,
         msg::BaseType::Byte => dtp::BaseType::BYTE,
         msg::BaseType::Float32 => dtp::BaseType::REAL,
@@ -94,10 +34,70 @@ fn convert_base_type(base_type: &msg::BaseType) -> dtp::BaseType {
         msg::BaseType::Uint32 => dtp::BaseType::UDINT,
         msg::BaseType::Int64 => dtp::BaseType::LINT,
         msg::BaseType::Uint64 => dtp::BaseType::ULINT,
-        msg::BaseType::String => dtp::BaseType::STRING,
+        msg::BaseType::String(constraint) => {
+            if let Some(constraint) = constraint {
+                structured_type_children.push(StructuredTypeChild::VarDeclaration(
+                    VarDeclaration::new(
+                        &format!("{}_string_bound", var_name),
+                        &dtp::BaseType::ULINT,
+                        &None,
+                        &Some(dtp::InitialValue::ULINT(*constraint as u64)),
+                        &None,
+                    ),
+                ));
+            }
+            dtp::BaseType::STRING
+        }
         msg::BaseType::Wstring => dtp::BaseType::WSTRING,
         msg::BaseType::Char => dtp::BaseType::CHAR,
-        msg::BaseType::Custom(value) => dtp::BaseType::Custom(value.clone()),
+        msg::BaseType::Custom(value) => dtp::BaseType::Custom(convert_reference(value)),
+    };
+
+    // handle constraints
+    let array_size = match field.constraint() {
+        Some(Constraint::StaticArray(capacity)) => Some(ArraySize::Static(*capacity)),
+        Some(Constraint::UnboundedDynamicArray) => Some(ArraySize::Dynamic),
+        Some(Constraint::BoundedDynamicArray(bound)) => {
+            structured_type_children.push(StructuredTypeChild::VarDeclaration(
+                VarDeclaration::new(
+                    &format!("{}_array_bound", var_name),
+                    &dtp::BaseType::ULINT,
+                    &None,
+                    &Some(dtp::InitialValue::ULINT(*bound as u64)),
+                    &None,
+                ),
+            ));
+            Some(ArraySize::Dynamic)
+        }
+        _ => None
+    };
+
+    // handle initial value
+    // handle constant
+    let optional_initial_value = match field.field_type() {
+        FieldType::Variable(optional_initial_value) => {
+            convert_optional_initial_value(optional_initial_value, field)
+        }
+        FieldType::Constant(initial_value) => {
+            var_name += "_CONSTANT";
+            Some(convert_initial_value(initial_value, field))
+        }
+    };
+
+    structured_type_children.push(StructuredTypeChild::VarDeclaration(VarDeclaration::new(
+        &var_name,
+        &base_type,
+        &array_size,
+        &optional_initial_value,
+        &None,
+    )));
+    Ok(structured_type_children)
+}
+
+fn convert_reference(reference: &Reference) -> String {
+    match reference {
+        Reference::Relative { file } => { file.to_string() }
+        Reference::Absolute { package, file } => { format!("{}_{}", package, file) }
     }
 }
 

@@ -22,7 +22,7 @@ impl StructuredType {
 #[derive(Debug, Clone)]
 pub struct Field {
     base_type: BaseType,
-    constraints: Vec<Constraint>,
+    constraint: Option<Constraint>,
     name: String,
     field_type: FieldType,
 }
@@ -30,13 +30,13 @@ pub struct Field {
 impl Field {
     pub fn new(
         base_type: &BaseType,
-        constraints: &Vec<Constraint>,
+        constraint: &Option<Constraint>,
         name: &str,
         field_type: &FieldType,
     ) -> Self {
         Self {
             base_type: base_type.clone(),
-            constraints: constraints.clone(),
+            constraint: constraint.clone(),
             name: name.to_string(),
             field_type: field_type.clone(),
         }
@@ -44,8 +44,8 @@ impl Field {
     pub fn base_type(&self) -> &BaseType {
         &self.base_type
     }
-    pub fn constraints(&self) -> &Vec<Constraint> {
-        &self.constraints
+    pub fn constraint(&self) -> Option<&Constraint> {
+        self.constraint.as_ref()
     }
     pub fn name(&self) -> &str {
         &self.name
@@ -70,7 +70,7 @@ pub enum BaseType {
     Int64,
     Uint64,
     Char,
-    String,
+    String(Option<usize>),
     Wstring,
     Custom(Reference),
 }
@@ -83,7 +83,6 @@ pub enum Reference {
 
 #[derive(Debug, Clone)]
 pub enum Constraint {
-    BoundedString(usize),
     StaticArray(usize),
     UnboundedDynamicArray,
     BoundedDynamicArray(usize),

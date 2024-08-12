@@ -1,7 +1,7 @@
 use std::fs;
 
 use crate::business::error::Result;
-use crate::core::msg::{BaseType, Constraint, Field, FieldType, InitialValue, StructuredType};
+use crate::core::msg::{BaseType, Constraint, Field, FieldType, InitialValue, Reference, StructuredType};
 
 pub fn write(msg_dto: &StructuredType, to_directory: &str) -> Result<()> {
     let file_name = msg_dto.name();
@@ -22,8 +22,8 @@ fn msg_dto_as_string(msg_dto: &StructuredType) -> String {
 
 fn field_as_string(field: &Field) -> String {
     let mut result: String = String::new();
-    result.push_str(base_type_as_string(field.base_type()));
-    result.push_str(&constraints_as_string(field.constraints()));
+    result.push_str(&base_type_as_string(field.base_type()));
+    result.push_str(&constraints_as_string(field.constraint()));
     result.push_str(" ");
     result.push_str(field.name());
     result.push_str(&field_type_as_string(field.field_type()));
@@ -42,57 +42,44 @@ fn field_type_as_string(field_type: &FieldType) -> String {
     }
 }
 
-fn base_type_as_string(base_type: &BaseType) -> &str {
+fn base_type_as_string(base_type: &BaseType) -> String {
     match base_type {
-        BaseType::Bool => "bool",
-        BaseType::Byte => "byte",
-        BaseType::Float32 => "float32",
-        BaseType::Float64 => "float64",
-        BaseType::Int8 => "int8",
-        BaseType::Uint8 => "uint8",
-        BaseType::Int16 => "int16",
-        BaseType::Uint16 => "uint16",
-        BaseType::Int32 => "int32",
-        BaseType::Uint32 => "uint32",
-        BaseType::Int64 => "int64",
-        BaseType::Uint64 => "uint64",
-        BaseType::Char => "char",
-        BaseType::String => "string",
-        BaseType::Wstring => "wstring",
-        BaseType::Custom(custom) => custom,
+        BaseType::Bool => "bool".to_string(),
+        BaseType::Byte => "byte".to_string(),
+        BaseType::Float32 => "float32".to_string(),
+        BaseType::Float64 => "float64".to_string(),
+        BaseType::Int8 => "int8".to_string(),
+        BaseType::Uint8 => "uint8".to_string(),
+        BaseType::Int16 => "int16".to_string(),
+        BaseType::Uint16 => "uint16".to_string(),
+        BaseType::Int32 => "int32".to_string(),
+        BaseType::Uint32 => "uint32".to_string(),
+        BaseType::Int64 => "int64".to_string(),
+        BaseType::Uint64 => "uint64".to_string(),
+        BaseType::Char => "char".to_string(),
+        BaseType::String(constraint) => constraint
+            .map(|c| format!("string<={}", c.to_string()))
+            .unwrap_or_else(|| "string".to_string()),
+        BaseType::Wstring => "wstring".to_string(),
+        BaseType::Custom(reference) => match reference {
+            Reference::Relative { file } => file.clone(),
+            Reference::Absolute { package, file } => format!("{}/{}", package, file),
+        },
     }
 }
 
-fn constraints_as_string(constraints: &Vec<Constraint>) -> String {
-    let mut result = String::new();
-    let mut optional_string_constraint = None;
-    let mut optional_array_constriant = None;
-
-    // Annahme: Maximal 2 constraints und davon ist nur einer einer ein array constraint
-    for constraint in constraints {
-        match constraint {
-            Constraint::BoundedString(upper_bound) => {
-                optional_string_constraint = Some(format!("<={}", upper_bound));
-            }
-            Constraint::BoundedDynamicArray(max_capacity) => {
-                optional_array_constriant = Some(format!("[<={}]", max_capacity));
-            }
+fn constraints_as_string(constraint: Option<&Constraint>) -> String {
+    constraint
+        .map(|c| match c {
             Constraint::StaticArray(static_capacity) => {
-                optional_array_constriant = Some(format!("[{}]", static_capacity));
+                format!("[{}]", static_capacity)
             }
-            Constraint::UnboundedDynamicArray => {
-                optional_array_constriant = Some("[]".to_string());
+            Constraint::UnboundedDynamicArray => "[]".to_string(),
+            Constraint::BoundedDynamicArray(max_capacity) => {
+                format!("[<={}]", max_capacity)
             }
-        }
-    }
-
-    if let Some(string_constraint) = optional_string_constraint {
-        result += &string_constraint;
-    }
-    if let Some(array_constraint) = optional_array_constriant {
-        result += &array_constraint;
-    }
-    result
+        })
+        .unwrap_or("".to_string())
 }
 
 fn initial_value_as_string(initial_value: &InitialValue) -> String {

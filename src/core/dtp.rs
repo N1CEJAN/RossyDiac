@@ -134,7 +134,7 @@ impl VarDeclaration {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BaseType {
     BOOL,
     SINT,
