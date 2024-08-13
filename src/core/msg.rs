@@ -71,7 +71,7 @@ pub enum BaseType {
     Uint64,
     Char,
     String(Option<usize>),
-    Wstring,
+    Wstring(Option<usize>),
     Custom(Reference),
 }
 

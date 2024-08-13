@@ -60,7 +60,9 @@ fn base_type_as_string(base_type: &BaseType) -> String {
         BaseType::String(constraint) => constraint
             .map(|c| format!("string<={}", c.to_string()))
             .unwrap_or_else(|| "string".to_string()),
-        BaseType::Wstring => "wstring".to_string(),
+        BaseType::Wstring(constraint) => constraint
+            .map(|c| format!("wstring<={}", c.to_string()))
+            .unwrap_or_else(|| "wstring".to_string()),
         BaseType::Custom(reference) => match reference {
             Reference::Relative { file } => file.clone(),
             Reference::Absolute { package, file } => format!("{}/{}", package, file),

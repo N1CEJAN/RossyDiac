@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="Iec61499Primitives" Comment="A Template for a Data Type">
+	<Identification>
+	</Identification>
+	<VersionInfo Version="1.0" Author="jan" Date="2024-08-12">
+	</VersionInfo>
+	<CompilerInfo>
+	</CompilerInfo>
+	<StructuredType>
+		<VarDeclaration Name="a_bool" Type="BOOL" Comment=""/>
+		<VarDeclaration Name="a_SINT" Type="SINT" Comment=""/>
+		<VarDeclaration Name="a_INT" Type="INT" Comment=""/>
+		<VarDeclaration Name="a_DINT" Type="DINT" Comment=""/>
+		<VarDeclaration Name="a_LINT" Type="LINT" Comment=""/>
+		<VarDeclaration Name="a_USINT" Type="USINT" Comment=""/>
+		<VarDeclaration Name="a_UINT" Type="UINT" Comment=""/>
+		<VarDeclaration Name="a_UDINT" Type="UDINT" Comment=""/>
+		<VarDeclaration Name="a_ULINT" Type="ULINT" Comment=""/>
+		<VarDeclaration Name="a_REAL" Type="REAL" Comment=""/>
+		<VarDeclaration Name="a_LREAL" Type="LREAL" Comment=""/>
+		<VarDeclaration Name="a_BYTE" Type="BYTE" Comment=""/>
+		<VarDeclaration Name="a_WORD" Type="WORD" Comment=""/>
+		<VarDeclaration Name="a_DWORD" Type="DWORD" Comment=""/>
+		<VarDeclaration Name="a_LWORD" Type="LWORD" Comment=""/>
+		<VarDeclaration Name="a_CHAR" Type="CHAR" Comment=""/>
+		<VarDeclaration Name="a_STRING" Type="STRING" Comment=""/>
+		<VarDeclaration Name="a_WSTRING" Type="WSTRING" Comment=""/>
+	</StructuredType>
+</DataType>

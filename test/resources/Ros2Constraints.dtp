@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="Ros2Constraints" Comment="">
+	<Identification>
+	</Identification>
+	<VersionInfo Version="1.0" Author="jan" Date="2024-07-13">
+	</VersionInfo>
+	<CompilerInfo>
+	</CompilerInfo>
+	<StructuredType>
+		<VarDeclaration Name="a_static_array" Type="INT" Comment="" ArraySize="5" InitialValue="[0, 0, 0, 0, 0]"/>
+		<VarDeclaration Name="a_dynamic_array" Type="INT" Comment="" ArraySize="*" InitialValue="[0,1,2,3]"/>
+		<VarDeclaration Name="a_bound_dynamic_array_of_ints" Type="INT" Comment="" ArraySize="*"/>
+		<VarDeclaration Name="a_bound_dynamic_array_of_ints_array_bound" Type="ULINT" Comment="" InitialValue="5"/>
+		<VarDeclaration Name="a_bound_string" Type="STRING" Comment="" InitialValue="''"/>
+		<VarDeclaration Name="a_bound_string_string_bound" Type="ULINT" Comment="" InitialValue="4"/>
+		<VarDeclaration Name="a_bound_dynamic_array_of_bound_strings" Type="STRING" Comment="" ArraySize="*" InitialValue="[0, 1, 2, 3, 4]"/>
+		<VarDeclaration Name="a_bound_dynamic_array_of_bound_strings_array_bound" Type="ULINT" Comment="" InitialValue="5"/>
+		<VarDeclaration Name="a_bound_dynamic_array_of_bound_strings_string_bound" Type="ULINT" Comment="" InitialValue="4"/>
+	</StructuredType>
+</DataType>

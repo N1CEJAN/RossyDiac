@@ -1,6 +1,11 @@
 use crate::business::error::Result;
 use crate::core::{dtp, msg};
 
+const ARRAY_BOUND_VAR_NAME_SUFFIX: &'static str = "_array_bound";
+const STRING_BOUND_VAR_NAME_SUFFIX: &'static str = "_string_bound";
+const WSTRING_BOUND_VAR_NAME_SUFFIX: &'static str = "_wstring_bound";
+const CONSTANT_VAR_NAME_SUFFIX: &'static str = "_CONSTANT";
+
 pub fn convert(data_type: &dtp::DataType) -> Result<msg::StructuredType> {
     let name = data_type.name().to_string();
     let fields: Vec<msg::Field> = match data_type.data_type_kind() {
@@ -24,18 +29,25 @@ fn convert_structured_type(structured_type: &dtp::StructuredType) -> Result<Vec<
     Ok(fields)
 }
 
-fn convert_var_declaration<'a>(
-    structured_type: &'a dtp::StructuredType,
-    var_declaration: &'a dtp::VarDeclaration,
+fn convert_var_declaration(
+    structured_type: &dtp::StructuredType,
+    var_declaration: &dtp::VarDeclaration,
 ) -> Result<Vec<msg::Field>> {
     let mut fields: Vec<msg::Field> = Vec::new();
 
     // skip helper
-    let is_helper = var_declaration.name().ends_with("_array_bound")
-        || var_declaration.name().ends_with("_string_bound");
+    let is_helper = var_declaration
+        .name()
+        .ends_with(ARRAY_BOUND_VAR_NAME_SUFFIX)
+        || var_declaration
+            .name()
+            .ends_with(STRING_BOUND_VAR_NAME_SUFFIX);
     if is_helper {
         return Ok(fields);
     }
+
+    let var_name = convert_field_name(var_declaration)?;
+    let constraint = convert_constraint(structured_type, var_declaration)?;
 
     // handle base_type
     match var_declaration.base_type() {
@@ -55,48 +67,35 @@ fn convert_var_declaration<'a>(
         | dtp::BaseType::STRING
         | dtp::BaseType::WSTRING
         | dtp::BaseType::Custom(_) => {
-            fields.push(convert_var_declaration_directly(
-                structured_type,
-                var_declaration,
-            )?);
+            fields.push(msg::Field::new(
+                &convert_base_type_directly(structured_type, var_declaration)?,
+                &constraint,
+                &var_name,
+                &convert_initial_value_directly(var_declaration)?,
+            ));
         }
         dtp::BaseType::WORD => {
-            let main_var_name = convert_field_name(var_declaration)?;
+            let base_type = msg::BaseType::Byte;
             let bytes = convert_initial_value_word_dword_lword(var_declaration)?;
-            let constraints2 = convert_constraints(structured_type, var_declaration)?;
             for (index, byte) in bytes.into_iter().enumerate() {
-                fields.push(msg::Field::new(
-                    &msg::BaseType::Byte,
-                    &constraints2,
-                    format!("{}_word_byte_{}", main_var_name, index).as_str(),
-                    &byte,
-                ));
+                let field_name = format!("{}_word_byte_{}", var_name, index);
+                fields.push(msg::Field::new(&base_type, &constraint, &field_name, &byte));
             }
         }
         dtp::BaseType::DWORD => {
-            let main_var_name = convert_field_name(var_declaration)?;
+            let base_type = msg::BaseType::Byte;
             let bytes = convert_initial_value_word_dword_lword(var_declaration)?;
-            let constraints2 = convert_constraints(structured_type, var_declaration)?;
             for (index, byte) in bytes.into_iter().enumerate() {
-                fields.push(msg::Field::new(
-                    &msg::BaseType::Byte,
-                    &constraints2,
-                    format!("{}_dword_byte_{}", main_var_name, index).as_str(),
-                    &byte,
-                ));
+                let field_name = format!("{}_dword_byte_{}", var_name, index);
+                fields.push(msg::Field::new(&base_type, &constraint, &field_name, &byte));
             }
         }
         dtp::BaseType::LWORD => {
-            let main_var_name = convert_field_name(var_declaration)?;
+            let base_type = msg::BaseType::Byte;
             let bytes = convert_initial_value_word_dword_lword(var_declaration)?;
-            let constraints2 = convert_constraints(structured_type, var_declaration)?;
             for (index, byte) in bytes.into_iter().enumerate() {
-                fields.push(msg::Field::new(
-                    &msg::BaseType::Byte,
-                    &constraints2,
-                    format!("{}_lword_byte_{}", main_var_name, index).as_str(),
-                    &byte,
-                ));
+                let field_name = format!("{}_lword_byte_{}", var_name, index);
+                fields.push(msg::Field::new(&base_type, &constraint, &field_name, &byte));
             }
         }
         dtp::BaseType::TIME => todo!("time conversion"),
@@ -104,49 +103,42 @@ fn convert_var_declaration<'a>(
         dtp::BaseType::TIME_OF_DAY | dtp::BaseType::TOD => todo!("time_of_day conversion"),
         dtp::BaseType::DATE_AND_TIME | dtp::BaseType::DT => todo!("date_and_time conversion"),
     }
-
     Ok(fields)
 }
 
-fn convert_var_declaration_directly<'a>(
-    structured_type: &'a dtp::StructuredType,
-    var_declaration: &'a dtp::VarDeclaration,
-) -> Result<msg::Field> {
-    Ok(msg::Field::new(
-        &convert_base_type_directly(structured_type, var_declaration)?,
-        &convert_constraints(structured_type, var_declaration)?,
-        convert_field_name(var_declaration)?,
-        &convert_initial_value_directly(var_declaration)?,
-    ))
-}
-
-fn convert_base_type_directly<'a>(
-    structured_type: &'a dtp::StructuredType,
-    var_declaration: &'a dtp::VarDeclaration,
+fn convert_base_type_directly(
+    structured_type: &dtp::StructuredType,
+    var_declaration: &dtp::VarDeclaration,
 ) -> Result<msg::BaseType> {
-    match var_declaration.base_type() {
-        dtp::BaseType::BOOL => Ok(msg::BaseType::Bool),
-        dtp::BaseType::SINT => Ok(msg::BaseType::Int8),
-        dtp::BaseType::INT => Ok(msg::BaseType::Int16),
-        dtp::BaseType::DINT => Ok(msg::BaseType::Int32),
-        dtp::BaseType::LINT => Ok(msg::BaseType::Int64),
-        dtp::BaseType::USINT => Ok(msg::BaseType::Uint8),
-        dtp::BaseType::UINT => Ok(msg::BaseType::Uint16),
-        dtp::BaseType::UDINT => Ok(msg::BaseType::Uint32),
-        dtp::BaseType::ULINT => Ok(msg::BaseType::Uint64),
-        dtp::BaseType::REAL => Ok(msg::BaseType::Float32),
-        dtp::BaseType::LREAL => Ok(msg::BaseType::Float64),
-        dtp::BaseType::BYTE => Ok(msg::BaseType::Byte),
-        dtp::BaseType::CHAR => Ok(msg::BaseType::Char),
+    let result = match var_declaration.base_type() {
+        dtp::BaseType::BOOL => msg::BaseType::Bool,
+        dtp::BaseType::SINT => msg::BaseType::Int8,
+        dtp::BaseType::INT => msg::BaseType::Int16,
+        dtp::BaseType::DINT => msg::BaseType::Int32,
+        dtp::BaseType::LINT => msg::BaseType::Int64,
+        dtp::BaseType::USINT => msg::BaseType::Uint8,
+        dtp::BaseType::UINT => msg::BaseType::Uint16,
+        dtp::BaseType::UDINT => msg::BaseType::Uint32,
+        dtp::BaseType::ULINT => msg::BaseType::Uint64,
+        dtp::BaseType::REAL => msg::BaseType::Float32,
+        dtp::BaseType::LREAL => msg::BaseType::Float64,
+        dtp::BaseType::BYTE => msg::BaseType::Byte,
+        dtp::BaseType::CHAR => msg::BaseType::Char,
         dtp::BaseType::STRING => {
-            let helper_var = format!("{}_string_bound", convert_field_name(var_declaration)?);
+            let helper_var = convert_field_name(var_declaration)? + STRING_BOUND_VAR_NAME_SUFFIX;
             let optional_bound = get_var_declaration_by_name(structured_type, &helper_var)
                 .map(|var_declaration| convert_bound_var_declaration(var_declaration))
                 .transpose()?;
-            Ok(msg::BaseType::String(optional_bound))
+            msg::BaseType::String(optional_bound)
         }
-        dtp::BaseType::WSTRING => Ok(msg::BaseType::Wstring),
-        dtp::BaseType::Custom(value) => Ok(msg::BaseType::Custom(convert_reference(value)?)),
+        dtp::BaseType::WSTRING => {
+            let helper_var = convert_field_name(var_declaration)? + WSTRING_BOUND_VAR_NAME_SUFFIX;
+            let optional_bound = get_var_declaration_by_name(structured_type, &helper_var)
+                .map(|var_declaration| convert_bound_var_declaration(var_declaration))
+                .transpose()?;
+            msg::BaseType::Wstring(optional_bound)
+        }
+        dtp::BaseType::Custom(value) => msg::BaseType::Custom(convert_reference(value)?),
         dtp::BaseType::WORD
         | dtp::BaseType::DWORD
         | dtp::BaseType::LWORD
@@ -155,11 +147,12 @@ fn convert_base_type_directly<'a>(
         | dtp::BaseType::TIME_OF_DAY
         | dtp::BaseType::TOD
         | dtp::BaseType::DATE_AND_TIME
-        | dtp::BaseType::DT => Err("Direct BaseType conversion not possible".into()),
-    }
+        | dtp::BaseType::DT => return Err("Direct BaseType conversion not possible".into()),
+    };
+    Ok(result)
 }
 
-fn convert_constraints(
+fn convert_constraint(
     structured_type: &dtp::StructuredType,
     var_declaration: &dtp::VarDeclaration,
 ) -> Result<Option<msg::Constraint>> {
@@ -167,7 +160,7 @@ fn convert_constraints(
         Some(dtp::ArraySize::Dynamic) => {
             let optional_constraint_var_declaration = get_var_declaration_by_name(
                 structured_type,
-                &format!("{}_array_bound", convert_field_name(var_declaration)?),
+                &(convert_field_name(var_declaration)? + ARRAY_BOUND_VAR_NAME_SUFFIX),
             );
             if let Some(constraint_var_declaration) = optional_constraint_var_declaration {
                 let bound = convert_bound_var_declaration(constraint_var_declaration)?;
@@ -182,39 +175,50 @@ fn convert_constraints(
     Ok(constraint)
 }
 
-fn convert_field_name(var_declaration: &dtp::VarDeclaration) -> Result<&str> {
+fn convert_field_name(var_declaration: &dtp::VarDeclaration) -> Result<String> {
     let mut name = var_declaration.name();
-    if var_declaration.name().ends_with("_CONSTANT") {
+    if var_declaration.name().ends_with(CONSTANT_VAR_NAME_SUFFIX) {
         name = name
-            .strip_suffix("_CONSTANT")
+            .strip_suffix(CONSTANT_VAR_NAME_SUFFIX)
             .ok_or(format!("_CONSTANT suffix not found on name \"{}\"", name))?;
     }
-    Ok(name)
+    Ok(name.to_string())
 }
 
 fn convert_initial_value_directly(var_declaration: &dtp::VarDeclaration) -> Result<msg::FieldType> {
     let optional_initial_value = var_declaration
         .initial_value()
         .as_ref()
-        .map(|initial_value| match initial_value {
-            dtp::InitialValue::BOOL(v) => msg::InitialValue::Bool(*v),
-            dtp::InitialValue::SINT(v) => msg::InitialValue::Int8(*v),
-            dtp::InitialValue::INT(v) => msg::InitialValue::Int16(*v),
-            dtp::InitialValue::DINT(v) => msg::InitialValue::Int32(*v),
-            dtp::InitialValue::LINT(v) => msg::InitialValue::Int64(*v),
-            dtp::InitialValue::USINT(v) => msg::InitialValue::Uint8(*v),
-            dtp::InitialValue::UINT(v) => msg::InitialValue::Uint16(*v),
-            dtp::InitialValue::UDINT(v) => msg::InitialValue::Uint32(*v),
-            dtp::InitialValue::ULINT(v) => msg::InitialValue::Uint64(*v),
-            dtp::InitialValue::REAL(v) => msg::InitialValue::Float32(*v),
-            dtp::InitialValue::LREAL(v) => msg::InitialValue::Float64(*v),
-            dtp::InitialValue::BYTE(v) => msg::InitialValue::Byte(*v),
-            dtp::InitialValue::CHAR(v) => msg::InitialValue::Char(*v),
-            dtp::InitialValue::STRING(v) => msg::InitialValue::String(v.clone()),
-            dtp::InitialValue::WSTRING(v) => msg::InitialValue::Wstring(v.clone()),
-            _ => unimplemented!("No direct InitialValue conversion found"),
-        });
+        .map(|initial_value| convert_initial_value(initial_value))
+        .transpose()?;
     convert_field_type(var_declaration, optional_initial_value)
+}
+
+fn convert_initial_value(initial_value: &dtp::InitialValue) -> Result<msg::InitialValue> {
+    let result = match initial_value {
+        dtp::InitialValue::BOOL(v) => msg::InitialValue::Bool(*v),
+        dtp::InitialValue::SINT(v) => msg::InitialValue::Int8(*v),
+        dtp::InitialValue::INT(v) => msg::InitialValue::Int16(*v),
+        dtp::InitialValue::DINT(v) => msg::InitialValue::Int32(*v),
+        dtp::InitialValue::LINT(v) => msg::InitialValue::Int64(*v),
+        dtp::InitialValue::USINT(v) => msg::InitialValue::Uint8(*v),
+        dtp::InitialValue::UINT(v) => msg::InitialValue::Uint16(*v),
+        dtp::InitialValue::UDINT(v) => msg::InitialValue::Uint32(*v),
+        dtp::InitialValue::ULINT(v) => msg::InitialValue::Uint64(*v),
+        dtp::InitialValue::REAL(v) => msg::InitialValue::Float32(*v),
+        dtp::InitialValue::LREAL(v) => msg::InitialValue::Float64(*v),
+        dtp::InitialValue::BYTE(v) => msg::InitialValue::Byte(*v),
+        dtp::InitialValue::CHAR(v) => msg::InitialValue::Char(*v),
+        dtp::InitialValue::STRING(v) => msg::InitialValue::String(v.clone()),
+        dtp::InitialValue::WSTRING(v) => msg::InitialValue::Wstring(v.clone()),
+        dtp::InitialValue::Array(v) => v
+            .into_iter()
+            .map(convert_initial_value)
+            .collect::<Result<Vec<_>>>()
+            .map(msg::InitialValue::Array)?,
+        _ => return Err(format!("No direct conversion found for {:?}", initial_value).into()),
+    };
+    Ok(result)
 }
 
 fn convert_initial_value_word_dword_lword(
@@ -246,7 +250,7 @@ fn convert_initial_value_word_dword_lword(
                 _ => None,
             });
 
-    if var_declaration.name().ends_with("_CONSTANT") {
+    if var_declaration.name().ends_with(CONSTANT_VAR_NAME_SUFFIX) {
         bytes
             .map(|initial_values| {
                 initial_values
@@ -281,7 +285,7 @@ fn convert_field_type(
     var_declaration: &dtp::VarDeclaration,
     optional_initial_value: Option<msg::InitialValue>,
 ) -> Result<msg::FieldType> {
-    let is_constant = var_declaration.name().ends_with("_CONSTANT");
+    let is_constant = var_declaration.name().ends_with(CONSTANT_VAR_NAME_SUFFIX);
     if is_constant {
         optional_initial_value.map(msg::FieldType::Constant).ok_or(
             format!(

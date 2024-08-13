@@ -80,7 +80,12 @@ fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
                 BaseType::String(optional_bound.map(|digits| digits.parse().unwrap()))
             },
         ),
-        map(tag("wstring"), |_| BaseType::Wstring),
+        map(
+            tuple((tag("wstring"), opt(preceded(tag("<="), digit1)))),
+            |(_, optional_bound): (&str, Option<&str>)| {
+                BaseType::Wstring(optional_bound.map(|digits| digits.parse().unwrap()))
+            },
+        ),
         map(
             alt((take_until1(" "), take_until1("["))),
             |custom_type: &str| {
@@ -175,7 +180,7 @@ fn parse_initial_value<'a>(
             BaseType::Char => Box::new(map(u8, InitialValue::Char)),
             // assume defined initial value is correct, due to time constraints
             BaseType::String(_) => Box::new(map(parse_quoted_string, InitialValue::String)),
-            BaseType::Wstring => Box::new(map(parse_quoted_string, InitialValue::Wstring)),
+            BaseType::Wstring(_) => Box::new(map(parse_quoted_string, InitialValue::Wstring)),
             BaseType::Custom(_) => unreachable!(),
         }
     }
