@@ -46,7 +46,6 @@ fn convert_var_declaration(
         return Ok(fields);
     }
 
-    let var_name = convert_field_name(var_declaration)?;
     let constraint = convert_constraint(structured_type, var_declaration)?;
 
     // handle base_type
@@ -70,31 +69,15 @@ fn convert_var_declaration(
             fields.push(msg::Field::new(
                 &convert_base_type_directly(structured_type, var_declaration)?,
                 &constraint,
-                &var_name,
+                &convert_field_name(var_declaration)?,
                 &convert_initial_value_directly(var_declaration)?,
             ));
         }
-        dtp::BaseType::WORD => {
+        dtp::BaseType::WORD | dtp::BaseType::DWORD | dtp::BaseType::LWORD => {
             let base_type = msg::BaseType::Byte;
             let bytes = convert_initial_value_word_dword_lword(var_declaration)?;
             for (index, byte) in bytes.into_iter().enumerate() {
-                let field_name = format!("{}_word_byte_{}", var_name, index);
-                fields.push(msg::Field::new(&base_type, &constraint, &field_name, &byte));
-            }
-        }
-        dtp::BaseType::DWORD => {
-            let base_type = msg::BaseType::Byte;
-            let bytes = convert_initial_value_word_dword_lword(var_declaration)?;
-            for (index, byte) in bytes.into_iter().enumerate() {
-                let field_name = format!("{}_dword_byte_{}", var_name, index);
-                fields.push(msg::Field::new(&base_type, &constraint, &field_name, &byte));
-            }
-        }
-        dtp::BaseType::LWORD => {
-            let base_type = msg::BaseType::Byte;
-            let bytes = convert_initial_value_word_dword_lword(var_declaration)?;
-            for (index, byte) in bytes.into_iter().enumerate() {
-                let field_name = format!("{}_lword_byte_{}", var_name, index);
+                let field_name = convert_field_name_word_dword_lword(var_declaration, index)?;
                 fields.push(msg::Field::new(&base_type, &constraint, &field_name, &byte));
             }
         }
@@ -185,16 +168,29 @@ fn convert_field_name(var_declaration: &dtp::VarDeclaration) -> Result<String> {
     Ok(name.to_string())
 }
 
+fn convert_field_name_word_dword_lword(
+    var_declaration: &dtp::VarDeclaration,
+    index: usize,
+) -> Result<String> {
+    let var_name = convert_field_name(var_declaration)?;
+    Ok(match var_declaration.base_type() {
+        dtp::BaseType::WORD => format!("{}_word_byte_{}", var_name, index),
+        dtp::BaseType::DWORD => format!("{}_dword_byte_{}", var_name, index),
+        dtp::BaseType::LWORD => format!("{}_lword_byte_{}", var_name, index),
+        _ => return Err(format!("no byte string name conversion found for {}", var_name).into()),
+    })
+}
+
 fn convert_initial_value_directly(var_declaration: &dtp::VarDeclaration) -> Result<msg::FieldType> {
     let optional_initial_value = var_declaration
         .initial_value()
         .as_ref()
-        .map(|initial_value| convert_initial_value(initial_value))
+        .map(|initial_value| convert_initial_value_directly2(initial_value))
         .transpose()?;
     convert_field_type(var_declaration, optional_initial_value)
 }
 
-fn convert_initial_value(initial_value: &dtp::InitialValue) -> Result<msg::InitialValue> {
+fn convert_initial_value_directly2(initial_value: &dtp::InitialValue) -> Result<msg::InitialValue> {
     let result = match initial_value {
         dtp::InitialValue::BOOL(v) => msg::InitialValue::Bool(*v),
         dtp::InitialValue::SINT(v) => msg::InitialValue::Int8(*v),
@@ -213,7 +209,7 @@ fn convert_initial_value(initial_value: &dtp::InitialValue) -> Result<msg::Initi
         dtp::InitialValue::WSTRING(v) => msg::InitialValue::Wstring(v.clone()),
         dtp::InitialValue::Array(v) => v
             .into_iter()
-            .map(convert_initial_value)
+            .map(convert_initial_value_directly2)
             .collect::<Result<Vec<_>>>()
             .map(msg::InitialValue::Array)?,
         _ => return Err(format!("No direct conversion found for {:?}", initial_value).into()),
@@ -224,61 +220,42 @@ fn convert_initial_value(initial_value: &dtp::InitialValue) -> Result<msg::Initi
 fn convert_initial_value_word_dword_lword(
     var_declaration: &dtp::VarDeclaration,
 ) -> Result<Vec<msg::FieldType>> {
-    let bytes: Option<Vec<msg::InitialValue>> =
-        var_declaration
-            .initial_value()
-            .as_ref()
-            .and_then(|initial_value| match initial_value {
-                dtp::InitialValue::WORD(initial_value) => Some(
-                    (0..2)
-                        .rev()
-                        .map(|i| msg::InitialValue::Byte((*initial_value >> (i * 8)) as u8))
-                        .collect(),
-                ),
-                dtp::InitialValue::DWORD(initial_value) => Some(
-                    (0..4)
-                        .rev()
-                        .map(|i| msg::InitialValue::Byte((*initial_value >> (i * 8)) as u8))
-                        .collect(),
-                ),
-                dtp::InitialValue::LWORD(initial_value) => Some(
-                    (0..8)
-                        .rev()
-                        .map(|i| msg::InitialValue::Byte((*initial_value >> (i * 8)) as u8))
-                        .collect(),
-                ),
-                _ => None,
-            });
+    let optional_initial_values = var_declaration
+        .initial_value()
+        .as_ref()
+        .map(convert_initial_value_word_dword_lword2)
+        .transpose()?;
 
-    if var_declaration.name().ends_with(CONSTANT_VAR_NAME_SUFFIX) {
-        bytes
-            .map(|initial_values| {
-                initial_values
-                    .into_iter()
-                    .map(msg::FieldType::Constant)
-                    .collect()
-            })
-            .ok_or(
-                format!(
-                    "No valid value found for constant \"{}\"",
-                    var_declaration.name()
-                )
-                .into(),
-            )
+    if let Some(initial_values) = optional_initial_values {
+        initial_values
+            .into_iter()
+            .map(|initial_value| convert_field_type(var_declaration, Some(initial_value)))
+            .collect::<Result<Vec<_>>>()
     } else {
-        let option = bytes.map(|initial_values| {
-            initial_values
-                .into_iter()
-                .map(|initial_value| msg::FieldType::Variable(Some(initial_value)))
-                .collect()
-        });
-        Ok(option.unwrap_or_else(|| match var_declaration.base_type() {
-            dtp::BaseType::WORD => (0..2).map(|_| msg::FieldType::Variable(None)).collect(),
-            dtp::BaseType::DWORD => (0..4).map(|_| msg::FieldType::Variable(None)).collect(),
-            dtp::BaseType::LWORD => (0..8).map(|_| msg::FieldType::Variable(None)).collect(),
-            _ => unimplemented!("Not intended to convert to string"),
-        }))
+        let byte_count = match var_declaration.base_type() {
+            dtp::BaseType::WORD => 2,
+            dtp::BaseType::DWORD => 4,
+            dtp::BaseType::LWORD => 8,
+            _ => unreachable!("due to check in initial value conversion")
+        };
+        Ok((0..byte_count).map(|_| msg::FieldType::Variable(None)).collect())
     }
+}
+
+fn convert_initial_value_word_dword_lword2(
+    initial_value: &dtp::InitialValue,
+) -> Result<Vec<msg::InitialValue>> {
+    let (value, byte_count) = match initial_value {
+        dtp::InitialValue::WORD(v) => (*v as u64, 2),
+        dtp::InitialValue::DWORD(v) => (*v as u64, 4),
+        dtp::InitialValue::LWORD(v) => (*v, 8),
+        _ => return Err(format!("No byte string conversion found for {:?}", initial_value).into()),
+    };
+
+    Ok((0..byte_count)
+        .rev()
+        .map(|i| msg::InitialValue::Byte((value >> (i * 8)) as u8))
+        .collect())
 }
 
 fn convert_field_type(

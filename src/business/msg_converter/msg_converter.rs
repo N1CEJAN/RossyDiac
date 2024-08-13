@@ -48,7 +48,20 @@ fn convert_field(field: &Field) -> Result<Vec<StructuredTypeChild>> {
             }
             dtp::BaseType::STRING
         }
-        msg::BaseType::Wstring => dtp::BaseType::WSTRING,
+        msg::BaseType::Wstring(constraint) => {
+            if let Some(constraint) = constraint {
+                structured_type_children.push(StructuredTypeChild::VarDeclaration(
+                    VarDeclaration::new(
+                        &format!("{}_wstring_bound", var_name),
+                        &dtp::BaseType::ULINT,
+                        &None,
+                        &Some(dtp::InitialValue::ULINT(*constraint as u64)),
+                        &None,
+                    ),
+                ));
+            }
+            dtp::BaseType::WSTRING
+        },
         msg::BaseType::Char => dtp::BaseType::CHAR,
         msg::BaseType::Custom(value) => dtp::BaseType::Custom(convert_reference(value)),
     };
