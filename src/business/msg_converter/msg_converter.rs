@@ -1,10 +1,7 @@
 use crate::business::error::Result;
-use crate::core::dtp;
-use crate::core::dtp::{ArraySize, DataType, DataTypeKind, StructuredTypeChild, VarDeclaration};
-use crate::core::msg;
-use crate::core::msg::{Constraint, Field, FieldType, Reference, StructuredType};
+use crate::core::{dtp, msg};
 
-pub fn convert(structured_type: &StructuredType) -> Result<DataType> {
+pub fn convert(structured_type: &msg::StructuredType) -> Result<dtp::DataType> {
     let name = structured_type.name().to_string();
     let mut structured_type_children = Vec::new();
     for field in structured_type.fields().iter() {
@@ -12,11 +9,11 @@ pub fn convert(structured_type: &StructuredType) -> Result<DataType> {
         structured_type_children.append(children)
     }
     let structured_type = dtp::StructuredType::new(&None, &structured_type_children);
-    let data_type_kind = DataTypeKind::StructuredType(structured_type);
-    Ok(DataType::new(&name, &None, &data_type_kind))
+    let data_type_kind = dtp::DataTypeKind::StructuredType(structured_type);
+    Ok(dtp::DataType::new(&name, &None, &data_type_kind))
 }
 
-fn convert_field(field: &Field) -> Result<Vec<StructuredTypeChild>> {
+fn convert_field(field: &msg::Field) -> Result<Vec<dtp::StructuredTypeChild>> {
     let mut structured_type_children = Vec::new();
     let mut var_name = field.name().to_string();
     
@@ -36,8 +33,8 @@ fn convert_field(field: &Field) -> Result<Vec<StructuredTypeChild>> {
         msg::BaseType::Uint64 => dtp::BaseType::ULINT,
         msg::BaseType::String(constraint) => {
             if let Some(constraint) = constraint {
-                structured_type_children.push(StructuredTypeChild::VarDeclaration(
-                    VarDeclaration::new(
+                structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(
+                    dtp::VarDeclaration::new(
                         &format!("{}_string_bound", var_name),
                         &dtp::BaseType::ULINT,
                         &None,
@@ -50,8 +47,8 @@ fn convert_field(field: &Field) -> Result<Vec<StructuredTypeChild>> {
         }
         msg::BaseType::Wstring(constraint) => {
             if let Some(constraint) = constraint {
-                structured_type_children.push(StructuredTypeChild::VarDeclaration(
-                    VarDeclaration::new(
+                structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(
+                    dtp::VarDeclaration::new(
                         &format!("{}_wstring_bound", var_name),
                         &dtp::BaseType::ULINT,
                         &None,
@@ -68,11 +65,11 @@ fn convert_field(field: &Field) -> Result<Vec<StructuredTypeChild>> {
 
     // handle constraints
     let array_size = match field.constraint() {
-        Some(Constraint::StaticArray(capacity)) => Some(ArraySize::Static(*capacity)),
-        Some(Constraint::UnboundedDynamicArray) => Some(ArraySize::Dynamic),
-        Some(Constraint::BoundedDynamicArray(bound)) => {
-            structured_type_children.push(StructuredTypeChild::VarDeclaration(
-                VarDeclaration::new(
+        Some(msg::Constraint::StaticArray(capacity)) => Some(dtp::ArraySize::Static(*capacity)),
+        Some(msg::Constraint::UnboundedDynamicArray) => Some(dtp::ArraySize::Dynamic),
+        Some(msg::Constraint::BoundedDynamicArray(bound)) => {
+            structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(
+                dtp::VarDeclaration::new(
                     &format!("{}_array_bound", var_name),
                     &dtp::BaseType::ULINT,
                     &None,
@@ -80,7 +77,7 @@ fn convert_field(field: &Field) -> Result<Vec<StructuredTypeChild>> {
                     &None,
                 ),
             ));
-            Some(ArraySize::Dynamic)
+            Some(dtp::ArraySize::Dynamic)
         }
         _ => None
     };
@@ -88,16 +85,16 @@ fn convert_field(field: &Field) -> Result<Vec<StructuredTypeChild>> {
     // handle initial value
     // handle constant
     let optional_initial_value = match field.field_type() {
-        FieldType::Variable(optional_initial_value) => {
+        msg::FieldType::Variable(optional_initial_value) => {
             convert_optional_initial_value(optional_initial_value, field)
         }
-        FieldType::Constant(initial_value) => {
+        msg::FieldType::Constant(initial_value) => {
             var_name += "_CONSTANT";
             Some(convert_initial_value(initial_value, field))
         }
     };
 
-    structured_type_children.push(StructuredTypeChild::VarDeclaration(VarDeclaration::new(
+    structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(dtp::VarDeclaration::new(
         &var_name,
         &base_type,
         &array_size,
@@ -107,16 +104,16 @@ fn convert_field(field: &Field) -> Result<Vec<StructuredTypeChild>> {
     Ok(structured_type_children)
 }
 
-fn convert_reference(reference: &Reference) -> String {
+fn convert_reference(reference: &msg::Reference) -> String {
     match reference {
-        Reference::Relative { file } => { file.to_string() }
-        Reference::Absolute { package, file } => { format!("{}_{}", package, file) }
+        msg::Reference::Relative { file } => { file.to_string() }
+        msg::Reference::Absolute { package, file } => { format!("{}_{}", package, file) }
     }
 }
 
 fn convert_optional_initial_value(
     optional_initial_value: &Option<msg::InitialValue>,
-    context: &Field,
+    context: &msg::Field,
 ) -> Option<dtp::InitialValue> {
     if let Some(initial_value) = optional_initial_value {
         Some(convert_initial_value(initial_value, context))
@@ -127,7 +124,7 @@ fn convert_optional_initial_value(
 
 fn convert_initial_value(
     initial_value: &msg::InitialValue,
-    context: &Field,
+    context: &msg::Field,
 ) -> dtp::InitialValue {
     match initial_value {
         msg::InitialValue::Bool(value) => dtp::InitialValue::BOOL(*value),
