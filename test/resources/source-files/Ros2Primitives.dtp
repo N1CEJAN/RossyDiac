@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="Ros2Primitives">
+  <StructuredType>
+    <VarDeclaration Name="a_bool" Type="BOOL" />
+    <VarDeclaration Name="a_byte" Type="BYTE" />
+    <VarDeclaration Name="a_float32" Type="REAL" />
+    <VarDeclaration Name="a_float64" Type="LREAL" />
+    <VarDeclaration Name="an_int8" Type="SINT" />
+    <VarDeclaration Type="INT" Name="an_int16" />
+    <VarDeclaration Type="DINT" Name="an_int32" />
+    <VarDeclaration Type="LINT" Name="an_int64" />
+    <VarDeclaration Type="USINT" Name="a_uint8" />
+    <VarDeclaration Name="a_uint16" Type="UINT" />
+    <VarDeclaration Name="a_uint32" Type="UDINT" />
+    <VarDeclaration Type="ULINT" Name="a_uint64" />
+    <VarDeclaration Name="a_char" Type="CHAR" />
+    <VarDeclaration Type="STRING" Name="a_string" />
+    <VarDeclaration Name="a_wstring" Type="WSTRING" />
+  </StructuredType>
+</DataType>

@@ -7,7 +7,7 @@
 	<CompilerInfo>
 	</CompilerInfo>
 	<StructuredType>
-		<VarDeclaration Name="a_bool" Type="BOOL" Comment=""/>
+		<VarDeclaration Name="a_BOOL_CONSTANT" Type="BOOL" Comment="" InitialValue="true"/>
 		<VarDeclaration Name="a_SINT" Type="SINT" Comment=""/>
 		<VarDeclaration Name="a_INT" Type="INT" Comment=""/>
 		<VarDeclaration Name="a_DINT" Type="DINT" Comment=""/>
