@@ -167,7 +167,13 @@ pub enum BaseType {
 #[derive(Clone, Debug)]
 pub enum ArraySize {
     Dynamic,
-    Static(usize)
+    Static(Capacity)
+}
+
+#[derive(Clone, Debug)]
+pub enum Capacity {
+    InPlace(usize),
+    Shifted(usize, usize),
 }
 
 #[derive(Clone, Debug)]

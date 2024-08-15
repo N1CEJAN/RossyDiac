@@ -11,6 +11,7 @@ pub fn write(data_type: DataType, to_directory: &str) -> Result<()> {
     let custom_data_type_element = create_data_type_element(data_type);
 
     let mut config = EmitterConfig::new();
+    config.perform_escaping = false;
     config.perform_indent = true;
     let file = File::create(format!("{to_directory}{data_type_name}.dtp"))?;
     custom_data_type_element.write_with_config(file, config)?;
