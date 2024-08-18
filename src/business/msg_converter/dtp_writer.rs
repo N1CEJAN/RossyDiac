@@ -125,13 +125,10 @@ fn base_type_to_string(base_type: &BaseType) -> String {
 
 fn initial_value_to_string(initial_value: &InitialValue) -> String {
     match initial_value {
-        InitialValue::BOOL(bool) => {
-            if *bool {
-                "TRUE".to_string()
-            } else {
-                "FALSE".to_string()
-            }
-        }
+        InitialValue::BOOL(bool) => match *bool {
+            true => "TRUE".to_string(),
+            false => "FALSE".to_string(),
+        },
         InitialValue::SINT(value) => int_literal_as_string(value),
         InitialValue::INT(value) => value.to_string(),
         InitialValue::DINT(value) => value.to_string(),
