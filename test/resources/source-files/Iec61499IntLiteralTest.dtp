@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="Iec61499IntLiteralTest" Comment="A Template for a Data Type">
+	<Identification>
+	</Identification>
+	<VersionInfo Version="1.0" Author="jan" Date="2024-08-18">
+	</VersionInfo>
+	<CompilerInfo packageName="ROS2_MSGS::conversion_tests::msg">
+	</CompilerInfo>
+	<StructuredType>
+		<VarDeclaration Name="signed" Type="SINT" Comment="" InitialValue="+1"/>
+		<VarDeclaration Name="unsigned" Type="SINT" Comment="" InitialValue="1"/>
+		<VarDeclaration Name="bin" Type="SINT" Comment="" InitialValue="2#10"/>
+		<VarDeclaration Name="oct" Type="SINT" Comment="" InitialValue="8#2"/>
+		<VarDeclaration Name="hex" Type="SINT" Comment="" InitialValue="16#2"/>
+	</StructuredType>
+</DataType>

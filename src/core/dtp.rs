@@ -179,7 +179,7 @@ pub enum Capacity {
 #[derive(Clone, Debug)]
 pub enum InitialValue {
     BOOL(bool),
-    SINT(i8),
+    SINT(IntLiteral),
     INT(i16),
     DINT(i32),
     LINT(i64),
@@ -215,3 +215,34 @@ pub const XML_ATTRIBUTE_TYPE: &str = "Type";
 pub const XML_ATTRIBUTE_ARRAY_SIZE: &str = "ArraySize";
 pub const XML_ATTRIBUTE_INITIAL_VALUE: &str = "InitialValue";
 pub const XML_ATTRIBUTE_COMMENT: &str = "Comment";
+
+#[derive(Clone, Debug)]
+pub struct IntLiteral {
+    pub int_type: Option<IntTypeName>,
+    pub value: String,
+    pub e_int_literal: EIntLiteral,
+}
+
+#[derive(Clone, Debug)]
+pub enum EIntLiteral {
+    DecimalInt,
+    BinaryInt,
+    OctalInt,
+    HexalInt,
+}
+
+#[derive(Clone, Debug)]
+pub enum IntTypeName {
+    SignedIntTypeName(SignedIntTypeName),
+    UnsignedIntTypeName(UnsignedIntTypeName),
+}
+
+#[derive(Clone, Debug)]
+pub enum SignedIntTypeName {
+    SINT, INT, DINT, LINT
+}
+
+#[derive(Clone, Debug)]
+pub enum UnsignedIntTypeName {
+    USINT, UINT, UDINT, ULINT
+}

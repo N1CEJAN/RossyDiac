@@ -4,7 +4,7 @@ use log::info;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_until1, take_while1};
 use nom::character::complete::{
-    digit1, i16, i32, i64, i8, line_ending, multispace1, u16, u32, u64, u8,
+    digit1, hex_digit1, i16, i32, i64, line_ending, multispace1, oct_digit1, u16, u32, u64, u8,
 };
 use nom::combinator::{eof, map, opt, verify};
 use nom::multi::{many0, separated_list0};
@@ -164,7 +164,7 @@ fn parse_initial_value<'a>(
             BaseType::Byte => Box::new(map(u8, InitialValue::Byte)),
             BaseType::Float32 => Box::new(map(float, InitialValue::Float32)),
             BaseType::Float64 => Box::new(map(double, InitialValue::Float64)),
-            BaseType::Int8 => Box::new(map(i8, InitialValue::Int8)),
+            BaseType::Int8 => Box::new(map(parse_int_literal, InitialValue::Int8)),
             BaseType::Uint8 => Box::new(map(u8, InitialValue::Uint8)),
             BaseType::Int16 => Box::new(map(i16, InitialValue::Int16)),
             BaseType::Uint16 => Box::new(map(u16, InitialValue::Uint16)),
@@ -184,6 +184,59 @@ fn parse_initial_value<'a>(
             BaseType::Custom(_) => unreachable!(),
         }
     }
+}
+
+fn parse_int_literal(input: &str) -> IResult<&str, IntLiteral> {
+    alt((
+        hex_int_parser,
+        oct_int_parser,
+        bin_int_parser,
+        dec_int_parser,
+    ))(input)
+}
+
+fn dec_int_parser(input: &str) -> IResult<&str, IntLiteral> {
+    map(
+        tuple((opt(alt((tag("-"), tag("+")))), digit1)),
+        |(optional_sign, unsigned_integer): (Option<&str>, &str)| IntLiteral {
+            value: if let Some(sign) = optional_sign {
+                sign.to_string() + unsigned_integer
+            } else {
+                unsigned_integer.to_string()
+            },
+            e_int_literal: EIntLiteral::DecimalInt,
+        },
+    )(input)
+}
+
+fn bin_int_parser(input: &str) -> IResult<&str, IntLiteral> {
+    map(
+        preceded(alt((tag("0b"), tag("0B"))), oct_digit1),
+        |str: &str| IntLiteral {
+            value: str.to_string(),
+            e_int_literal: EIntLiteral::BinaryInt,
+        },
+    )(input)
+}
+
+fn oct_int_parser(input: &str) -> IResult<&str, IntLiteral> {
+    map(
+        preceded(alt((tag("0o"), tag("0O"))), oct_digit1),
+        |str: &str| IntLiteral {
+            value: str.to_string(),
+            e_int_literal: EIntLiteral::OctalInt,
+        },
+    )(input)
+}
+
+fn hex_int_parser(input: &str) -> IResult<&str, IntLiteral> {
+    map(
+        preceded(alt((tag("0x"), tag("0X"))), hex_digit1),
+        |str: &str| IntLiteral {
+            value: str.to_string(),
+            e_int_literal: EIntLiteral::HexalInt,
+        },
+    )(input)
 }
 
 fn parse_quoted_string(input: &str) -> IResult<&str, String> {

@@ -1,7 +1,7 @@
 use std::fs;
 
 use crate::business::error::Result;
-use crate::core::msg::{BaseType, Constraint, Field, FieldType, InitialValue, Reference, StructuredType};
+use crate::core::msg::{BaseType, Constraint, EIntLiteral, Field, FieldType, InitialValue, IntLiteral, Reference, StructuredType};
 
 pub fn write(msg_dto: &StructuredType, to_directory: &str) -> Result<()> {
     let file_name = msg_dto.name();
@@ -90,7 +90,7 @@ fn initial_value_as_string(initial_value: &InitialValue) -> String {
         InitialValue::Byte(value) => value.to_string(),
         InitialValue::Float32(value) => value.to_string(),
         InitialValue::Float64(value) => value.to_string(),
-        InitialValue::Int8(value) => value.to_string(),
+        InitialValue::Int8(value) => int_literal_as_string(value),
         InitialValue::Uint8(value) => value.to_string(),
         InitialValue::Int16(value) => value.to_string(),
         InitialValue::Uint16(value) => value.to_string(),
@@ -114,6 +114,15 @@ fn array_of_initial_values_as_string(values: &[InitialValue]) -> String {
             .collect::<Vec<String>>()
             .join(",")
     )
+}
+
+fn int_literal_as_string(int_literal: &IntLiteral) -> String {
+    match int_literal.e_int_literal {
+        EIntLiteral::DecimalInt => format!("{}", int_literal.value),
+        EIntLiteral::BinaryInt => format!("0b{}", int_literal.value),
+        EIntLiteral::OctalInt => format!("0o{}", int_literal.value),
+        EIntLiteral::HexalInt => format!("0x{}", int_literal.value),
+    }
 }
 
 // fn default_initial_value(base_type: &BaseType, constraints: &[Constraint]) -> InitialValue {

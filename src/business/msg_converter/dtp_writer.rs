@@ -74,7 +74,8 @@ fn create_var_declaration_element(var_declaration: &VarDeclaration) -> XMLNode {
             XML_ATTRIBUTE_ARRAY_SIZE.to_string(),
             match array_size {
                 ArraySize::Dynamic => String::from('*'),
-                ArraySize::Static(capacity) => capacity.to_string(),
+                ArraySize::Static(Capacity::InPlace(capacity)) => format!("0..{}", capacity - 1),
+                ArraySize::Static(Capacity::Shifted(start, end)) => format!("{start}..{end}"),
             },
         );
     }
@@ -131,7 +132,7 @@ fn initial_value_to_string(initial_value: &InitialValue) -> String {
                 "FALSE".to_string()
             }
         }
-        InitialValue::SINT(value) => value.to_string(),
+        InitialValue::SINT(value) => int_literal_as_string(value),
         InitialValue::INT(value) => value.to_string(),
         InitialValue::DINT(value) => value.to_string(),
         InitialValue::LINT(value) => value.to_string(),
@@ -141,13 +142,13 @@ fn initial_value_to_string(initial_value: &InitialValue) -> String {
         InitialValue::ULINT(value) => value.to_string(),
         InitialValue::REAL(value) => value.to_string(),
         InitialValue::LREAL(value) => value.to_string(),
-        InitialValue::BYTE(value) => value.to_string(),
-        InitialValue::WORD(value) => value.to_string(),
-        InitialValue::DWORD(value) => value.to_string(),
-        InitialValue::LWORD(value) => value.to_string(),
-        InitialValue::CHAR(value) => value.to_string(),
-        InitialValue::STRING(value) => value.to_string(), // TODO: Checken
-        InitialValue::WSTRING(value) => value.to_string(), // TODO: Checken
+        InitialValue::BYTE(value) => format!("16#{:02X}", value),
+        InitialValue::WORD(value) => format!("16#{:04X}", value),
+        InitialValue::DWORD(value) => format!("16#{:08X}", value),
+        InitialValue::LWORD(value) => format!("16#{:016X}", value),
+        InitialValue::CHAR(value) => format!("'${:02X}'", value),
+        InitialValue::STRING(value) => format!("'{value}'"),
+        InitialValue::WSTRING(value) => format!("&quot;{value}&quot;"),
         InitialValue::TIME(value) => value.to_string(),
         InitialValue::DATE(value) => value.to_string(),
         InitialValue::TIME_OF_DAY(value) => value.to_string(),
@@ -158,55 +159,42 @@ fn initial_value_to_string(initial_value: &InitialValue) -> String {
     }
 }
 
+fn int_literal_as_string(int_literal: &IntLiteral) -> String {
+    let mut string = String::new();
+    if let Some(type_name) = int_literal.int_type.as_ref() {
+        string.push_str(match type_name {
+            IntTypeName::SignedIntTypeName(type_name) => match type_name {
+                SignedIntTypeName::SINT => "SINT#",
+                SignedIntTypeName::INT => "INT#",
+                SignedIntTypeName::DINT => "DINT#",
+                SignedIntTypeName::LINT => "LINT#",
+            },
+            IntTypeName::UnsignedIntTypeName(type_name) => match type_name {
+                UnsignedIntTypeName::USINT => "USINT#",
+                UnsignedIntTypeName::UINT => "UINT#",
+                UnsignedIntTypeName::UDINT => "UDINT#",
+                UnsignedIntTypeName::ULINT => "ULINT#",
+            },
+        })
+    }
+    string.push_str(
+        &(match &int_literal.e_int_literal {
+            EIntLiteral::DecimalInt => format!("{}", int_literal.value),
+            EIntLiteral::BinaryInt => format!("2#{}", int_literal.value),
+            EIntLiteral::OctalInt => format!("8#{}", int_literal.value),
+            EIntLiteral::HexalInt => format!("16#{}", int_literal.value),
+        }),
+    );
+    string
+}
+
 fn array_of_initial_values_as_string(values: &[InitialValue]) -> String {
     format!(
-        "{{{}}}",
+        "[{}]",
         values
             .iter()
             .map(initial_value_to_string)
             .collect::<Vec<String>>()
-            .join(",")
+            .join(", ")
     )
 }
-
-// fn default_initial_value<'a>(
-//     base_type: &'a BaseType,
-//     array_size: &'a Option<usize>,
-// ) -> Box<dyn FnOnce() -> Result<InitialValue> + 'a> {
-//     if let Some(array_capacity) = array_size {
-//         Box::new(move || {
-//             let mut initial_values = Vec::with_capacity(*array_capacity);
-//             for _ in 0..*array_capacity {
-//                 initial_values.push(default_initial_value(base_type, &None)()?)
-//             }
-//             Ok(InitialValue::Array(initial_values))
-//         })
-//     } else {
-//         match base_type {
-//             BaseType::BOOL => Box::new(|| Ok(InitialValue::BOOL(false))),
-//             BaseType::SINT => Box::new(|| Ok(InitialValue::SINT(0))),
-//             BaseType::INT => Box::new(|| Ok(InitialValue::INT(0))),
-//             BaseType::DINT => Box::new(|| Ok(InitialValue::DINT(0))),
-//             BaseType::LINT => Box::new(|| Ok(InitialValue::LINT(0))),
-//             BaseType::USINT => Box::new(|| Ok(InitialValue::USINT(0))),
-//             BaseType::UINT => Box::new(|| Ok(InitialValue::UINT(0))),
-//             BaseType::UDINT => Box::new(|| Ok(InitialValue::UDINT(0))),
-//             BaseType::ULINT => Box::new(|| Ok(InitialValue::ULINT(0))),
-//             BaseType::REAL => Box::new(|| Ok(InitialValue::REAL(0.0))),
-//             BaseType::LREAL => Box::new(|| Ok(InitialValue::LREAL(0.0))),
-//             BaseType::BYTE => Box::new(|| Ok(InitialValue::BYTE(0))),
-//             BaseType::WORD => Box::new(|| Ok(InitialValue::WORD(0))),
-//             BaseType::DWORD => Box::new(|| Ok(InitialValue::DWORD(0))),
-//             BaseType::LWORD => Box::new(|| Ok(InitialValue::LWORD(0))),
-//             BaseType::STRING => Box::new(|| Ok(InitialValue::STRING(String::new()))),
-//             BaseType::WSTRING => Box::new(|| Ok(InitialValue::WSTRING(String::new()))),
-//             BaseType::TIME => Box::new(|| Ok(InitialValue::TIME(0))),
-//             BaseType::DATE => Box::new(|| Ok(InitialValue::DATE(0))),
-//             BaseType::TIME_OF_DAY => Box::new(|| Ok(InitialValue::TIME_OF_DAY(0))),
-//             BaseType::TOD => Box::new(|| Ok(InitialValue::TOD(0))),
-//             BaseType::DATE_AND_TIME => Box::new(|| Ok(InitialValue::DATE_AND_TIME(0))),
-//             BaseType::DT => Box::new(|| Ok(InitialValue::DT(0))),
-//             BaseType::Custom(_) => Box::new(|| Ok(InitialValue::Custom)),
-//         }
-//     }
-// }

@@ -152,7 +152,13 @@ fn convert_constraint(
                 Some(msg::Constraint::UnboundedDynamicArray)
             }
         }
-        Some(dtp::ArraySize::Static(capacity)) => Some(msg::Constraint::StaticArray(*capacity)),
+        Some(dtp::ArraySize::Static(dtp::Capacity::InPlace(capacity))) => {
+            Some(msg::Constraint::StaticArray(*capacity))
+        }
+        // Annahme: Es werden nu 0..x Shifts angegeben
+        Some(dtp::ArraySize::Static(dtp::Capacity::Shifted(start, end))) => {
+            Some(msg::Constraint::StaticArray(end - start + 1))
+        }
         None => None,
     };
     Ok(constraint)
@@ -193,7 +199,7 @@ fn convert_initial_value_directly(var_declaration: &dtp::VarDeclaration) -> Resu
 fn convert_initial_value_directly2(initial_value: &dtp::InitialValue) -> Result<msg::InitialValue> {
     let result = match initial_value {
         dtp::InitialValue::BOOL(v) => msg::InitialValue::Bool(*v),
-        dtp::InitialValue::SINT(v) => msg::InitialValue::Int8(*v),
+        dtp::InitialValue::SINT(v) => msg::InitialValue::Int8(convert_int_literal(v)),
         dtp::InitialValue::INT(v) => msg::InitialValue::Int16(*v),
         dtp::InitialValue::DINT(v) => msg::InitialValue::Int32(*v),
         dtp::InitialValue::LINT(v) => msg::InitialValue::Int64(*v),
@@ -217,6 +223,22 @@ fn convert_initial_value_directly2(initial_value: &dtp::InitialValue) -> Result<
     Ok(result)
 }
 
+fn convert_int_literal(initial_value: &dtp::IntLiteral) -> msg::IntLiteral {
+    let e_int_literal = match &initial_value.e_int_literal {
+        dtp::EIntLiteral::DecimalInt => msg::EIntLiteral::DecimalInt,
+        dtp::EIntLiteral::BinaryInt => msg::EIntLiteral::BinaryInt,
+        dtp::EIntLiteral::OctalInt => msg::EIntLiteral::OctalInt,
+        dtp::EIntLiteral::HexalInt => msg::EIntLiteral::HexalInt,
+    };
+    msg::IntLiteral {
+        // Entscheidung: Die Underscores erhalte ich nicht,
+        // weil es verschwendet Konvertierungsaufwand ist,
+        // nur für ein sauber cross-transpiling.
+        value: initial_value.value.replace("_", ""),
+        e_int_literal,
+    }
+}
+
 fn convert_initial_value_word_dword_lword(
     var_declaration: &dtp::VarDeclaration,
 ) -> Result<Vec<msg::FieldType>> {
@@ -236,26 +258,47 @@ fn convert_initial_value_word_dword_lword(
             dtp::BaseType::WORD => 2,
             dtp::BaseType::DWORD => 4,
             dtp::BaseType::LWORD => 8,
-            _ => unreachable!("due to check in initial value conversion")
+            _ => unreachable!("due to check in initial value conversion"),
         };
-        Ok((0..byte_count).map(|_| msg::FieldType::Variable(None)).collect())
+        Ok((0..byte_count)
+            .map(|_| msg::FieldType::Variable(None))
+            .collect())
     }
 }
 
 fn convert_initial_value_word_dword_lword2(
     initial_value: &dtp::InitialValue,
 ) -> Result<Vec<msg::InitialValue>> {
-    let (value, byte_count) = match initial_value {
-        dtp::InitialValue::WORD(v) => (*v as u64, 2),
-        dtp::InitialValue::DWORD(v) => (*v as u64, 4),
-        dtp::InitialValue::LWORD(v) => (*v, 8),
-        _ => return Err(format!("No byte string conversion found for {:?}", initial_value).into()),
-    };
+    if let dtp::InitialValue::Array(array) = initial_value {
+        let result = array
+            .iter()
+            .map(convert_initial_value_word_dword_lword2)
+            .collect::<Result<Vec<Vec<msg::InitialValue>>>>()?;
+        let len = result[0].len();
+        let mut iters: Vec<_> = result.into_iter().map(|n| n.into_iter()).collect();
+        Ok((0..len)
+            .map(|_| {
+                msg::InitialValue::Array(
+                    iters
+                        .iter_mut()
+                        .map(|n| n.next().unwrap())
+                        .collect::<Vec<msg::InitialValue>>(),
+                )
+            })
+            .collect::<Vec<msg::InitialValue>>())
+    } else {
+        let (value, byte_count) = match initial_value {
+            dtp::InitialValue::WORD(v) => (*v as u64, 2),
+            dtp::InitialValue::DWORD(v) => (*v as u64, 4),
+            dtp::InitialValue::LWORD(v) => (*v, 8),
+            _ => return Err(format!("No byte string conversion for {initial_value:?}").into()),
+        };
 
-    Ok((0..byte_count)
-        .rev()
-        .map(|i| msg::InitialValue::Byte((value >> (i * 8)) as u8))
-        .collect())
+        Ok((0..byte_count)
+            .rev()
+            .map(|i| msg::InitialValue::Byte((value >> (i * 8)) as u8))
+            .collect())
+    }
 }
 
 fn convert_field_type(

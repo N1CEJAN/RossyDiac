@@ -7,23 +7,23 @@
 	<CompilerInfo>
 	</CompilerInfo>
 	<StructuredType>
-		<VarDeclaration Name="a_BOOL_CONSTANT" Type="BOOL" Comment="" InitialValue="true"/>
-		<VarDeclaration Name="a_SINT" Type="SINT" Comment=""/>
-		<VarDeclaration Name="a_INT" Type="INT" Comment=""/>
-		<VarDeclaration Name="a_DINT" Type="DINT" Comment=""/>
-		<VarDeclaration Name="a_LINT" Type="LINT" Comment=""/>
-		<VarDeclaration Name="a_USINT" Type="USINT" Comment=""/>
-		<VarDeclaration Name="a_UINT" Type="UINT" Comment=""/>
-		<VarDeclaration Name="a_UDINT" Type="UDINT" Comment=""/>
-		<VarDeclaration Name="a_ULINT" Type="ULINT" Comment=""/>
-		<VarDeclaration Name="a_REAL" Type="REAL" Comment=""/>
-		<VarDeclaration Name="a_LREAL" Type="LREAL" Comment=""/>
-		<VarDeclaration Name="a_BYTE" Type="BYTE" Comment=""/>
-		<VarDeclaration Name="a_WORD" Type="WORD" Comment=""/>
-		<VarDeclaration Name="a_DWORD" Type="DWORD" Comment=""/>
-		<VarDeclaration Name="a_LWORD" Type="LWORD" Comment=""/>
-		<VarDeclaration Name="a_CHAR" Type="CHAR" Comment=""/>
-		<VarDeclaration Name="a_STRING" Type="STRING" Comment=""/>
-		<VarDeclaration Name="a_WSTRING" Type="WSTRING" Comment=""/>
+		<VarDeclaration Name="a_BOOL" Type="BOOL" Comment="" InitialValue="FALSE"/>
+		<VarDeclaration Name="a_SINT" Type="SINT" Comment="" InitialValue="0"/>
+		<VarDeclaration Name="a_INT" Type="INT" Comment="" InitialValue="0"/>
+		<VarDeclaration Name="a_DINT" Type="DINT" Comment="" InitialValue="0"/>
+		<VarDeclaration Name="a_LINT" Type="LINT" Comment="" InitialValue="0"/>
+		<VarDeclaration Name="a_USINT" Type="USINT" Comment="" InitialValue="0"/>
+		<VarDeclaration Name="a_UINT" Type="UINT" Comment="" InitialValue="0"/>
+		<VarDeclaration Name="a_UDINT" Type="UDINT" Comment="" InitialValue="0"/>
+		<VarDeclaration Name="a_ULINT" Type="ULINT" Comment="" InitialValue="0"/>
+		<VarDeclaration Name="a_REAL" Type="REAL" Comment="" InitialValue="0.0"/>
+		<VarDeclaration Name="a_LREAL" Type="LREAL" Comment="" InitialValue="0.0"/>
+		<VarDeclaration Name="a_BYTE" Type="BYTE" Comment="" InitialValue="16#00"/>
+		<VarDeclaration Name="a_WORD" Type="WORD" Comment="" InitialValue="16#0000"/>
+		<VarDeclaration Name="a_DWORD" Type="DWORD" Comment="" InitialValue="16#00000000"/>
+		<VarDeclaration Name="a_LWORD" Type="LWORD" Comment="" InitialValue="16#0000000000000000"/>
+		<VarDeclaration Name="a_CHAR" Type="CHAR" Comment="" InitialValue="'$00'"/>
+		<VarDeclaration Name="a_STRING" Type="STRING" Comment="" InitialValue="''"/>
+		<VarDeclaration Name="a_WSTRING" Type="WSTRING" Comment="" InitialValue="&quot;&quot;"/>
 	</StructuredType>
 </DataType>

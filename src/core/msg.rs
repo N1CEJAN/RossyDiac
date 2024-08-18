@@ -104,7 +104,7 @@ pub enum InitialValue {
     Byte(u8),
     Float32(f32),
     Float64(f64),
-    Int8(i8),
+    Int8(IntLiteral),
     Uint8(u8),
     Int16(i16),
     Uint16(u16),
@@ -121,4 +121,18 @@ pub enum InitialValue {
     String(String),
     Wstring(String),
     Array(Vec<InitialValue>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IntLiteral {
+    pub value: String,
+    pub e_int_literal: EIntLiteral,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum EIntLiteral {
+    DecimalInt,
+    BinaryInt,
+    OctalInt,
+    HexalInt,
 }

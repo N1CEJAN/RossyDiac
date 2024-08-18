@@ -66,47 +66,29 @@ fn convert_field(
     Ok(structured_type_children)
 }
 
-fn convert_to_var_optional_initial_value(
-    structured_type: &msg::StructuredType,
-    field: &msg::Field,
-) -> Result<Option<dtp::InitialValue>> {
-    let optional_initial_value = match field.field_type() {
-        msg::FieldType::Variable(optional_initial_value) => optional_initial_value.as_ref(),
-        msg::FieldType::Constant(initial_value) => Some(initial_value),
+fn convert_to_var_name(_: &msg::StructuredType, field: &msg::Field) -> Result<String> {
+    let mut var_name = field.name().to_string();
+    if field.name().ends_with("_word_byte_0") {
+        var_name = var_name
+            .strip_suffix("_word_byte_0")
+            .map(|a| a.to_string())
+            .ok_or("unexpected_suffix_error")?;
+    } else if field.name().ends_with("_dword_byte_0") {
+        var_name = var_name
+            .strip_suffix("_dword_byte_0")
+            .map(|a| a.to_string())
+            .ok_or("unexpected_suffix_error")?;
+    } else if field.name().ends_with("_lword_byte_0") {
+        var_name = var_name
+            .strip_suffix("_lword_byte_0")
+            .map(|a| a.to_string())
+            .ok_or("unexpected_suffix_error")?;
     };
 
-    if let Some(initial_value) = optional_initial_value {
-        Ok(Some(convert_initial_value(
-            initial_value,
-            field,
-            structured_type,
-        )?))
-    } else {
-        Ok(None)
+    match field.field_type() {
+        msg::FieldType::Variable(_) => Ok(var_name),
+        msg::FieldType::Constant(_) => Ok(var_name + "_CONSTANT"),
     }
-}
-
-fn get_field<'a>(
-    structured_type: &'a msg::StructuredType,
-    var_name: &str,
-) -> Option<&'a msg::Field> {
-    structured_type
-        .fields()
-        .iter()
-        .filter(|field| field.name() == var_name)
-        .next()
-}
-
-fn convert_to_var_optional_array_size(
-    _: &msg::StructuredType,
-    field: &msg::Field,
-) -> Result<Option<dtp::ArraySize>> {
-    Ok(field.constraint().map(|c| match c {
-        msg::Constraint::StaticArray(capacity) => dtp::ArraySize::Static(*capacity),
-        msg::Constraint::UnboundedDynamicArray | msg::Constraint::BoundedDynamicArray(_) => {
-            dtp::ArraySize::Dynamic
-        }
-    }))
 }
 
 fn convert_to_var_base_type(_: &msg::StructuredType, field: &msg::Field) -> dtp::BaseType {
@@ -140,28 +122,44 @@ fn convert_to_var_base_type(_: &msg::StructuredType, field: &msg::Field) -> dtp:
     }
 }
 
-fn convert_to_var_name(_: &msg::StructuredType, field: &msg::Field) -> Result<String> {
-    let mut var_name = field.name().to_string();
-    if field.name().ends_with("_word_byte_0") {
-        var_name = var_name
-            .strip_suffix("_word_byte_0")
-            .map(|a| a.to_string())
-            .ok_or("unexpected_suffix_error")?;
-    } else if field.name().ends_with("_dword_byte_0") {
-        var_name = var_name
-            .strip_suffix("_dword_byte_0")
-            .map(|a| a.to_string())
-            .ok_or("unexpected_suffix_error")?;
-    } else if field.name().ends_with("_lword_byte_0") {
-        var_name = var_name
-            .strip_suffix("_lword_byte_0")
-            .map(|a| a.to_string())
-            .ok_or("unexpected_suffix_error")?;
+fn convert_to_var_optional_array_size(
+    _: &msg::StructuredType,
+    field: &msg::Field,
+) -> Result<Option<dtp::ArraySize>> {
+    Ok(field.constraint().map(|c| match c {
+        msg::Constraint::StaticArray(capacity) => {
+            // Erklärung: ROS2 kann nicht anders indexieren,
+            // weswegen derzeit die Information einer anderen
+            // Indexierung verloren geht.
+            // cross(InPlace(c)) => Shifted(0, c-1)
+            // cross(Shifted(0, e)) => Shifted(0, e)
+            // cross(Shifted(s, e)) => Shifted(0 ,e-s+1)
+            dtp::ArraySize::Static(dtp::Capacity::Shifted(0, *capacity - 1))
+        }
+        msg::Constraint::UnboundedDynamicArray | msg::Constraint::BoundedDynamicArray(_) => {
+            dtp::ArraySize::Dynamic
+        }
+    }))
+}
+
+fn convert_to_var_optional_initial_value(
+    structured_type: &msg::StructuredType,
+    field: &msg::Field,
+) -> Result<Option<dtp::InitialValue>> {
+    let optional_initial_value = match field.field_type() {
+        msg::FieldType::Variable(optional_initial_value) => optional_initial_value.as_ref(),
+        msg::FieldType::Constant(initial_value) => Some(initial_value),
     };
 
-    match field.field_type() {
-        msg::FieldType::Variable(_) => Ok(var_name),
-        msg::FieldType::Constant(_) => Ok(var_name + "_CONSTANT"),
+    if let Some(initial_value) = optional_initial_value {
+        Ok(Some(convert_initial_value(
+            initial_value,
+            field,
+            structured_type,
+            None,
+        )?))
+    } else {
+        Ok(None)
     }
 }
 
@@ -178,12 +176,13 @@ fn convert_initial_value(
     initial_value: &msg::InitialValue,
     field: &msg::Field,
     structured_type: &msg::StructuredType,
+    index: Option<usize>,
 ) -> Result<dtp::InitialValue> {
     Ok(match initial_value {
         msg::InitialValue::Bool(v) => dtp::InitialValue::BOOL(*v),
         msg::InitialValue::Float32(v) => dtp::InitialValue::REAL(*v),
         msg::InitialValue::Float64(v) => dtp::InitialValue::LREAL(*v),
-        msg::InitialValue::Int8(v) => dtp::InitialValue::SINT(*v),
+        msg::InitialValue::Int8(v) => dtp::InitialValue::SINT(convert_int_literal(v)),
         msg::InitialValue::Uint8(v) => dtp::InitialValue::USINT(*v),
         msg::InitialValue::Int16(v) => dtp::InitialValue::INT(*v),
         msg::InitialValue::Uint16(v) => dtp::InitialValue::UINT(*v),
@@ -194,83 +193,125 @@ fn convert_initial_value(
         msg::InitialValue::Char(v) => dtp::InitialValue::CHAR(*v),
         msg::InitialValue::String(v) => dtp::InitialValue::STRING(v.to_string()),
         msg::InitialValue::Wstring(v) => dtp::InitialValue::WSTRING(v.to_string()),
-        msg::InitialValue::Byte(v) => {
-            if field.name().ends_with("_word_byte_0") {
-                let concrete_word_byte_0_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_word_byte_0")?;
-                let concrete_word_byte_1_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_word_byte_1")?;
-                dtp::InitialValue::WORD(
-                    ((concrete_word_byte_0_initial_value as u16) << 8)
-                        | (concrete_word_byte_1_initial_value as u16),
-                )
-            } else if field.name().ends_with("_dword_byte_0") {
-                let concrete_dword_byte_0_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_dword_byte_0")?;
-                let concrete_dword_byte_1_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_dword_byte_1")?;
-                let concrete_dword_byte_2_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_dword_byte_2")?;
-                let concrete_dword_byte_3_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_dword_byte_3")?;
-                dtp::InitialValue::DWORD(
-                    ((concrete_dword_byte_0_initial_value as u32) << 24)
-                        | ((concrete_dword_byte_1_initial_value as u32) << 16)
-                        | ((concrete_dword_byte_2_initial_value as u32) << 8)
-                        | (concrete_dword_byte_3_initial_value as u32),
-                )
-            } else if field.name().ends_with("_lword_byte_0") {
-                let concrete_lword_byte_0_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_lword_byte_0")?;
-                let concrete_lword_byte_1_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_lword_byte_1")?;
-                let concrete_lword_byte_2_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_lword_byte_2")?;
-                let concrete_lword_byte_3_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_lword_byte_3")?;
-                let concrete_lword_byte_4_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_lword_byte_4")?;
-                let concrete_lword_byte_5_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_lword_byte_5")?;
-                let concrete_lword_byte_6_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_lword_byte_6")?;
-                let concrete_lword_byte_7_initial_value =
-                    get_concrete_initial_value_of_byte_field(structured_type, "_lword_byte_7")?;
-                dtp::InitialValue::LWORD(
-                    ((concrete_lword_byte_0_initial_value as u64) << 56)
-                        | ((concrete_lword_byte_1_initial_value as u64) << 48)
-                        | ((concrete_lword_byte_2_initial_value as u64) << 40)
-                        | ((concrete_lword_byte_3_initial_value as u64) << 32)
-                        | ((concrete_lword_byte_4_initial_value as u64) << 24)
-                        | ((concrete_lword_byte_5_initial_value as u64) << 16)
-                        | ((concrete_lword_byte_6_initial_value as u64) << 8)
-                        | (concrete_lword_byte_7_initial_value as u64),
-                )
-            } else {
-                dtp::InitialValue::BYTE(*v)
-            }
+        msg::InitialValue::Byte(byte_0) if field.name().ends_with("_word_byte_0") => {
+            let byte_1 = get_byte_of_byte_field(structured_type, field, "_word_byte_1", index)?;
+            dtp::InitialValue::WORD(((*byte_0 as u16) << 8) | (*byte_1 as u16))
         }
+        msg::InitialValue::Byte(byte_0) if field.name().ends_with("_dword_byte_0") => {
+            let byte_1 = get_byte_of_byte_field(structured_type, field, "_dword_byte_1", index)?;
+            let byte_2 = get_byte_of_byte_field(structured_type, field, "_dword_byte_2", index)?;
+            let byte_3 = get_byte_of_byte_field(structured_type, field, "_dword_byte_3", index)?;
+            dtp::InitialValue::DWORD(
+                ((*byte_0 as u32) << 24)
+                    | ((*byte_1 as u32) << 16)
+                    | ((*byte_2 as u32) << 8)
+                    | (*byte_3 as u32),
+            )
+        }
+        msg::InitialValue::Byte(byte_0) if field.name().ends_with("_lword_byte_0") => {
+            let byte_1 = get_byte_of_byte_field(structured_type, field, "_lword_byte_1", index)?;
+            let byte_2 = get_byte_of_byte_field(structured_type, field, "_lword_byte_2", index)?;
+            let byte_3 = get_byte_of_byte_field(structured_type, field, "_lword_byte_3", index)?;
+            let byte_4 = get_byte_of_byte_field(structured_type, field, "_lword_byte_4", index)?;
+            let byte_5 = get_byte_of_byte_field(structured_type, field, "_lword_byte_5", index)?;
+            let byte_6 = get_byte_of_byte_field(structured_type, field, "_lword_byte_6", index)?;
+            let byte_7 = get_byte_of_byte_field(structured_type, field, "_lword_byte_7", index)?;
+            dtp::InitialValue::LWORD(
+                ((*byte_0 as u64) << 56)
+                    | ((*byte_1 as u64) << 48)
+                    | ((*byte_2 as u64) << 40)
+                    | ((*byte_3 as u64) << 32)
+                    | ((*byte_4 as u64) << 24)
+                    | ((*byte_5 as u64) << 16)
+                    | ((*byte_6 as u64) << 8)
+                    | (*byte_7 as u64),
+            )
+        }
+        msg::InitialValue::Byte(v) => dtp::InitialValue::BYTE(*v),
         msg::InitialValue::Array(v) => dtp::InitialValue::Array(
             v.iter()
-                .map(|value| convert_initial_value(value, field, structured_type))
+                .enumerate()
+                .map(|(index, value)| match field.base_type() {
+                    msg::BaseType::Byte => {
+                        convert_initial_value(value, field, structured_type, Some(index))
+                    }
+                    _ => convert_initial_value(value, field, structured_type, None),
+                })
                 .collect::<Result<Vec<_>>>()?,
         ),
     })
 }
 
-fn get_concrete_initial_value_of_byte_field(
-    structured_type: &msg::StructuredType,
+fn convert_int_literal(int_literal: &msg::IntLiteral) -> dtp::IntLiteral {
+    let e_int_literal = match int_literal.e_int_literal {
+        msg::EIntLiteral::DecimalInt => dtp::EIntLiteral::DecimalInt,
+        msg::EIntLiteral::BinaryInt => dtp::EIntLiteral::BinaryInt,
+        msg::EIntLiteral::OctalInt => dtp::EIntLiteral::OctalInt,
+        msg::EIntLiteral::HexalInt => dtp::EIntLiteral::HexalInt,
+    };
+    dtp::IntLiteral {
+        int_type: None,
+        value: int_literal.value.clone(),
+        e_int_literal,
+    }
+}
+
+fn get_byte_of_byte_field<'a>(
+    structured_type: &'a msg::StructuredType,
+    field: &msg::Field,
     suffix: &str,
-) -> Result<u8> {
-    let byte_field = get_field(structured_type, suffix)
-        .ok_or(format!("field ending with \"{}\" expected", suffix))?;
-    let concrete_initial_value = match byte_field.field_type() {
-        msg::FieldType::Variable(Some(msg::InitialValue::Byte(v)))
-        | msg::FieldType::Constant(msg::InitialValue::Byte(v)) => Ok(*v),
-        _ => Err(format!(
-            "initial value for field ending with \"{}\" expected.",
-            suffix
-        )),
-    }?;
-    Ok(concrete_initial_value)
+    index: Option<usize>,
+) -> Result<&'a u8> {
+    Ok(
+        match get_initial_value_of_byte_field(structured_type, field, suffix)? {
+            msg::InitialValue::Array(initial_values) if index.is_some() => {
+                match initial_values.get(index.unwrap()) {
+                    Some(msg::InitialValue::Byte(v)) => v,
+                    _ => return Err(format!("invalid initial values for field '{suffix}'").into()),
+                }
+            }
+            msg::InitialValue::Byte(byte1) => byte1,
+            _ => return Err(format!("invalid initial values for field '{suffix}'").into()),
+        },
+    )
+}
+
+fn get_initial_value_of_byte_field<'a>(
+    structured_type: &'a msg::StructuredType,
+    field: &msg::Field,
+    suffix: &str,
+) -> Result<&'a msg::InitialValue> {
+    let byte_field = get_helper_field_by_suffix(structured_type, field, suffix)?;
+    match byte_field.field_type() {
+        msg::FieldType::Variable(Some(v)) | msg::FieldType::Constant(v) => Ok(v),
+        _ => Err(format!("initial value for field {} expected.", byte_field.name()).into()),
+    }
+}
+
+fn get_helper_field_by_suffix<'a>(
+    structured_type: &'a msg::StructuredType,
+    field: &msg::Field,
+    suffix: &str,
+) -> Result<&'a msg::Field> {
+    let mut field_name = field.name().to_string();
+    if (0..2).any(|i| field.name().ends_with(&format!("_word_byte_{i}"))) {
+        field_name.truncate(field_name.len() - 12);
+    } else if (0..8).any(|i| field.name().ends_with(&format!("_byte_{}", i))) {
+        field_name.truncate(field_name.len() - 13);
+    }
+    field_name.push_str(suffix);
+
+    get_field(structured_type, &field_name)
+        .ok_or(format!("helper field '{field_name}' expected").into())
+}
+
+fn get_field<'a>(
+    structured_type: &'a msg::StructuredType,
+    var_name: &str,
+) -> Option<&'a msg::Field> {
+    structured_type
+        .fields()
+        .iter()
+        .filter(|field| *field.name() == *var_name)
+        .next()
 }
