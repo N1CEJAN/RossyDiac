@@ -167,7 +167,7 @@ pub enum BaseType {
 #[derive(Clone, Debug)]
 pub enum ArraySize {
     Dynamic,
-    Static(Capacity)
+    Static(Capacity),
 }
 
 #[derive(Clone, Debug)]
@@ -180,13 +180,13 @@ pub enum Capacity {
 pub enum InitialValue {
     BOOL(bool),
     SINT(IntLiteral),
-    INT(i16),
-    DINT(i32),
-    LINT(i64),
-    USINT(u8),
-    UINT(u16),
-    UDINT(u32),
-    ULINT(u64),
+    INT(IntLiteral),
+    DINT(IntLiteral),
+    LINT(IntLiteral),
+    USINT(IntLiteral),
+    UINT(IntLiteral),
+    UDINT(IntLiteral),
+    ULINT(IntLiteral),
     REAL(f32),
     LREAL(f64),
     BYTE(u8),
@@ -239,10 +239,16 @@ pub enum IntTypeName {
 
 #[derive(Clone, Debug)]
 pub enum SignedIntTypeName {
-    SINT, INT, DINT, LINT
+    SINT,
+    INT,
+    DINT,
+    LINT,
 }
 
 #[derive(Clone, Debug)]
 pub enum UnsignedIntTypeName {
-    USINT, UINT, UDINT, ULINT
+    USINT,
+    UINT,
+    UDINT,
+    ULINT,
 }

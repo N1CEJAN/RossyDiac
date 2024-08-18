@@ -1,4 +1,4 @@
-use crate::business::error::Result;
+use crate::business::error::{Error, Result};
 use crate::core::{dtp, msg};
 
 const ARRAY_BOUND_VAR_NAME_SUFFIX: &'static str = "_array_bound";
@@ -212,13 +212,13 @@ fn convert_initial_value_directly2(initial_value: &dtp::InitialValue) -> Result<
     let result = match initial_value {
         dtp::InitialValue::BOOL(v) => msg::InitialValue::Bool(*v),
         dtp::InitialValue::SINT(v) => msg::InitialValue::Int8(convert_int_literal(v)),
-        dtp::InitialValue::INT(v) => msg::InitialValue::Int16(*v),
-        dtp::InitialValue::DINT(v) => msg::InitialValue::Int32(*v),
-        dtp::InitialValue::LINT(v) => msg::InitialValue::Int64(*v),
-        dtp::InitialValue::USINT(v) => msg::InitialValue::Uint8(*v),
-        dtp::InitialValue::UINT(v) => msg::InitialValue::Uint16(*v),
-        dtp::InitialValue::UDINT(v) => msg::InitialValue::Uint32(*v),
-        dtp::InitialValue::ULINT(v) => msg::InitialValue::Uint64(*v),
+        dtp::InitialValue::INT(v) => msg::InitialValue::Int16(convert_int_literal(v)),
+        dtp::InitialValue::DINT(v) => msg::InitialValue::Int32(convert_int_literal(v)),
+        dtp::InitialValue::LINT(v) => msg::InitialValue::Int64(convert_int_literal(v)),
+        dtp::InitialValue::USINT(v) => msg::InitialValue::Uint8(convert_int_literal(v)),
+        dtp::InitialValue::UINT(v) => msg::InitialValue::Uint16(convert_int_literal(v)),
+        dtp::InitialValue::UDINT(v) => msg::InitialValue::Uint32(convert_int_literal(v)),
+        dtp::InitialValue::ULINT(v) => msg::InitialValue::Uint64(convert_int_literal(v)),
         dtp::InitialValue::REAL(v) => msg::InitialValue::Float32(*v),
         dtp::InitialValue::LREAL(v) => msg::InitialValue::Float64(*v),
         dtp::InitialValue::BYTE(v) => msg::InitialValue::Byte(*v),
@@ -346,8 +346,8 @@ fn get_var_declaration_by_name<'a>(
 }
 
 fn convert_bound_var_declaration(bound_var_declaration: &dtp::VarDeclaration) -> Result<usize> {
-    if let Some(dtp::InitialValue::ULINT(initial_value)) = bound_var_declaration.initial_value() {
-        Ok(*initial_value as usize)
+    if let Some(dtp::InitialValue::ULINT(int_literal)) = bound_var_declaration.initial_value() {
+        Ok(int_literal.value.parse().map_err(Error::custom)?)
     } else {
         Err(format!(
             "Invalid InitialValue of helper VarDeclaration {}",

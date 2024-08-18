@@ -90,14 +90,14 @@ fn initial_value_as_string(initial_value: &InitialValue) -> String {
         InitialValue::Byte(value) => value.to_string(),
         InitialValue::Float32(value) => value.to_string(),
         InitialValue::Float64(value) => value.to_string(),
-        InitialValue::Int8(value) => int_literal_as_string(value),
-        InitialValue::Uint8(value) => value.to_string(),
-        InitialValue::Int16(value) => value.to_string(),
-        InitialValue::Uint16(value) => value.to_string(),
-        InitialValue::Int32(value) => value.to_string(),
-        InitialValue::Uint32(value) => value.to_string(),
-        InitialValue::Int64(value) => value.to_string(),
-        InitialValue::Uint64(value) => value.to_string(),
+        InitialValue::Int8(value)
+        | InitialValue::Uint8(value)
+        | InitialValue::Int16(value)
+        | InitialValue::Uint16(value)
+        | InitialValue::Int32(value)
+        | InitialValue::Uint32(value)
+        | InitialValue::Int64(value)
+        | InitialValue::Uint64(value) => int_literal_as_string(value),
         InitialValue::Char(value) => value.to_string(),
         InitialValue::String(value) => format!("\"{}\"", value.replace("\"", "\\\"")),
         InitialValue::Wstring(value) => format!("\"{}\"", value.replace("\"", "\\\"")),

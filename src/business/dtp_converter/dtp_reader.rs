@@ -204,6 +204,24 @@ macro_rules! parse_primitive_initial_value {
     };
 }
 
+macro_rules! parse_int_initial_value {
+    ($iec61131_int_type_name:ident, $iec61131_primitive:ident) => {
+        Box::new(|str| {
+            let literal = parse_int_literal(str).map_err(|e| e.to_owned()).finish()?.1;
+            if !matches!(
+                literal.int_type,
+                Some(IntTypeName::$iec61131_int_type_name(
+                    $iec61131_int_type_name::$iec61131_primitive
+                )) | None
+            ) {
+                Err("Invalid integer type name found".into())
+            } else {
+                Ok(InitialValue::$iec61131_primitive(literal))
+            }
+        })
+    };
+}
+
 fn parse_initial_value<'a>(
     base_type: &'a BaseType,
     array_size: &'a Option<ArraySize>,
@@ -226,14 +244,14 @@ fn parse_initial_value<'a>(
     } else {
         match base_type {
             BaseType::BOOL => Box::new(|str| parse_bool_initial_value(str).map(InitialValue::BOOL)),
-            BaseType::SINT => Box::new(|str| parse_sint_initial_value(str)),
-            BaseType::INT => parse_primitive_initial_value!(INT),
-            BaseType::DINT => parse_primitive_initial_value!(DINT),
-            BaseType::LINT => parse_primitive_initial_value!(LINT),
-            BaseType::USINT => parse_primitive_initial_value!(USINT),
-            BaseType::UINT => parse_primitive_initial_value!(UINT),
-            BaseType::UDINT => parse_primitive_initial_value!(UDINT),
-            BaseType::ULINT => parse_primitive_initial_value!(ULINT),
+            BaseType::SINT => parse_int_initial_value!(SignedIntTypeName, SINT),
+            BaseType::INT => parse_int_initial_value!(SignedIntTypeName, INT),
+            BaseType::DINT => parse_int_initial_value!(SignedIntTypeName, DINT),
+            BaseType::LINT => parse_int_initial_value!(SignedIntTypeName, LINT),
+            BaseType::USINT => parse_int_initial_value!(UnsignedIntTypeName, USINT),
+            BaseType::UINT => parse_int_initial_value!(UnsignedIntTypeName, UINT),
+            BaseType::UDINT => parse_int_initial_value!(UnsignedIntTypeName, UDINT),
+            BaseType::ULINT => parse_int_initial_value!(UnsignedIntTypeName, ULINT),
             BaseType::REAL => parse_primitive_initial_value!(REAL),
             BaseType::LREAL => parse_primitive_initial_value!(LREAL),
             BaseType::BYTE => Box::new(|str| {
@@ -331,18 +349,6 @@ fn parse_wstring_initial_value(input: &str) -> Result<String> {
         return Err("InitialValue of WSTRING must be delimited with &quot;&quot;".into());
     }
     Ok(input[1..input.len() - 1].to_string())
-}
-
-fn parse_sint_initial_value(input: &str) -> Result<InitialValue> {
-    let literal = parse_int_literal(input)
-        .map_err(|e| e.to_owned())
-        .finish()?
-        .1;
-    match literal.int_type {
-        Some(IntTypeName::SignedIntTypeName(SignedIntTypeName::SINT)) | None => {}
-        _ => return Err("Invalid integer type name found".into()),
-    }
-    Ok(InitialValue::SINT(literal))
 }
 
 fn parse_int_literal(input: &str) -> IResult<&str, IntLiteral> {

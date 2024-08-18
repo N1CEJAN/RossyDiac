@@ -105,13 +105,13 @@ pub enum InitialValue {
     Float32(f32),
     Float64(f64),
     Int8(IntLiteral),
-    Uint8(u8),
-    Int16(i16),
-    Uint16(u16),
-    Int32(i32),
-    Uint32(u32),
-    Int64(i64),
-    Uint64(u64),
+    Uint8(IntLiteral),
+    Int16(IntLiteral),
+    Uint16(IntLiteral),
+    Int32(IntLiteral),
+    Uint32(IntLiteral),
+    Int64(IntLiteral),
+    Uint64(IntLiteral),
     // http://design.ros2.org/articles/idl_interface_definition.html
     // A 8-bit single-byte character with a numerical value
     // between 0 and 255 (see 7.2.6.2.1)

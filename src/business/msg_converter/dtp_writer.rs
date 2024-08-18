@@ -129,14 +129,14 @@ fn initial_value_to_string(initial_value: &InitialValue) -> String {
             true => "TRUE".to_string(),
             false => "FALSE".to_string(),
         },
-        InitialValue::SINT(value) => int_literal_as_string(value),
-        InitialValue::INT(value) => value.to_string(),
-        InitialValue::DINT(value) => value.to_string(),
-        InitialValue::LINT(value) => value.to_string(),
-        InitialValue::USINT(value) => value.to_string(),
-        InitialValue::UINT(value) => value.to_string(),
-        InitialValue::UDINT(value) => value.to_string(),
-        InitialValue::ULINT(value) => value.to_string(),
+        InitialValue::SINT(int_literal)
+        | InitialValue::INT(int_literal)
+        | InitialValue::DINT(int_literal)
+        | InitialValue::LINT(int_literal)
+        | InitialValue::USINT(int_literal)
+        | InitialValue::UINT(int_literal)
+        | InitialValue::UDINT(int_literal)
+        | InitialValue::ULINT(int_literal) => int_literal_as_string(int_literal),
         InitialValue::REAL(value) => value.to_string(),
         InitialValue::LREAL(value) => value.to_string(),
         InitialValue::BYTE(value) => format!("16#{:02X}", value),

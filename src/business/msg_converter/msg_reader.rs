@@ -165,13 +165,13 @@ fn parse_initial_value<'a>(
             BaseType::Float32 => Box::new(map(float, InitialValue::Float32)),
             BaseType::Float64 => Box::new(map(double, InitialValue::Float64)),
             BaseType::Int8 => Box::new(map(parse_int_literal, InitialValue::Int8)),
-            BaseType::Uint8 => Box::new(map(u8, InitialValue::Uint8)),
-            BaseType::Int16 => Box::new(map(i16, InitialValue::Int16)),
-            BaseType::Uint16 => Box::new(map(u16, InitialValue::Uint16)),
-            BaseType::Int32 => Box::new(map(i32, InitialValue::Int32)),
-            BaseType::Uint32 => Box::new(map(u32, InitialValue::Uint32)),
-            BaseType::Int64 => Box::new(map(i64, InitialValue::Int64)),
-            BaseType::Uint64 => Box::new(map(u64, InitialValue::Uint64)),
+            BaseType::Uint8 => Box::new(map(parse_int_literal, InitialValue::Uint8)),
+            BaseType::Int16 => Box::new(map(parse_int_literal, InitialValue::Int16)),
+            BaseType::Uint16 => Box::new(map(parse_int_literal, InitialValue::Uint16)),
+            BaseType::Int32 => Box::new(map(parse_int_literal, InitialValue::Int32)),
+            BaseType::Uint32 => Box::new(map(parse_int_literal, InitialValue::Uint32)),
+            BaseType::Int64 => Box::new(map(parse_int_literal, InitialValue::Int64)),
+            BaseType::Uint64 => Box::new(map(parse_int_literal, InitialValue::Uint64)),
             // http://design.ros2.org/articles/idl_interface_definition.html
             // A 8-bit single-byte character with a numerical value
             // between 0 and 255 (see 7.2.6.2.1)
