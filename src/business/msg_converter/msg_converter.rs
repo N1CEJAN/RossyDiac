@@ -1,11 +1,11 @@
 use crate::business::error::Result;
 use crate::core::{dtp, msg};
 
-pub fn convert(structured_type: &msg::StructuredType) -> Result<dtp::DataType> {
-    let name = structured_type.name().to_string();
+pub fn convert(package_name: &str, structured_type: &msg::StructuredType) -> Result<dtp::DataType> {
+    let name = convert_structured_type_name(package_name, structured_type.name());
     let mut structured_type_children = Vec::new();
     for field in structured_type.fields().iter() {
-        let children = &mut convert_field(structured_type, field)?;
+        let children = &mut convert_field(package_name, structured_type, field)?;
         structured_type_children.append(children)
     }
     let structured_type = dtp::StructuredType::new(&None, &structured_type_children);
@@ -13,7 +13,16 @@ pub fn convert(structured_type: &msg::StructuredType) -> Result<dtp::DataType> {
     Ok(dtp::DataType::new(&name, &None, &data_type_kind))
 }
 
+fn convert_structured_type_name(package_name: &str, structured_type_name: &str) -> String {
+    let package_name = package_name
+        .replace("_", "")
+        .replace(" ", "")
+        .replace("-", "");
+    format!("ROS2_{package_name}_msg_{structured_type_name}")
+}
+
 fn convert_field(
+    package_name: &str,
     structured_type: &msg::StructuredType,
     field: &msg::Field,
 ) -> Result<Vec<dtp::StructuredTypeChild>> {
@@ -25,7 +34,7 @@ fn convert_field(
     }
 
     let var_name = convert_to_var_name(structured_type, field)?;
-    let base_type = convert_to_var_base_type(structured_type, field);
+    let base_type = convert_to_var_base_type(package_name, structured_type, field);
     let array_size = convert_to_var_optional_array_size(structured_type, field)?;
     let initial_value = convert_to_var_optional_initial_value(structured_type, field)?;
     structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(
@@ -91,7 +100,7 @@ fn convert_to_var_name(_: &msg::StructuredType, field: &msg::Field) -> Result<St
     }
 }
 
-fn convert_to_var_base_type(_: &msg::StructuredType, field: &msg::Field) -> dtp::BaseType {
+fn convert_to_var_base_type(package_name: &str, _: &msg::StructuredType, field: &msg::Field) -> dtp::BaseType {
     match field.base_type() {
         msg::BaseType::Bool => dtp::BaseType::BOOL,
         msg::BaseType::Float32 => dtp::BaseType::REAL,
@@ -107,7 +116,7 @@ fn convert_to_var_base_type(_: &msg::StructuredType, field: &msg::Field) -> dtp:
         msg::BaseType::Char => dtp::BaseType::CHAR,
         msg::BaseType::String(_) => dtp::BaseType::STRING,
         msg::BaseType::Wstring(_) => dtp::BaseType::WSTRING,
-        msg::BaseType::Custom(a_ref) => dtp::BaseType::Custom(convert_reference(a_ref)),
+        msg::BaseType::Custom(a_ref) => dtp::BaseType::Custom(convert_reference(package_name, a_ref)),
         msg::BaseType::Byte => {
             if field.name().ends_with("_word_byte_0") {
                 dtp::BaseType::WORD
@@ -163,9 +172,9 @@ fn convert_to_var_optional_initial_value(
     }
 }
 
-fn convert_reference(reference: &msg::Reference) -> String {
+fn convert_reference(package_name: &str, reference: &msg::Reference) -> String {
     match reference {
-        msg::Reference::Relative { file } => file.to_string(),
+        msg::Reference::Relative { file } => convert_structured_type_name(package_name, file),
         msg::Reference::Absolute { package, file } => {
             format!("{}_{}", package, file)
         }

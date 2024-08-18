@@ -24,6 +24,9 @@ enum Command {
         /// The directory where the conversion result will be written
         #[arg(short = 'd', long = "destination-directory")]
         path_to_destination_directory: String,
+        /// The name of the package the source file belongs to
+        #[arg(short = 'p', long = "package-name")]
+        package_name: String,
     },
     /// Converts a DTP file to a MSG file
     ConvertToMsg {
@@ -33,6 +36,9 @@ enum Command {
         /// The directory where the conversion result will be written
         #[arg(short = 'd', long = "destination-directory")]
         path_to_destination_directory: String,
+        /// The name of the package the destination file will belong to
+        #[arg(short = 'p', long = "package-name")]
+        package_name: String,
     },
 }
 
@@ -44,11 +50,21 @@ pub fn run() {
         Command::ConvertToDtp {
             path_to_msg_file,
             path_to_destination_directory,
-        } => convert_to_dtp(&path_to_msg_file, &path_to_destination_directory),
+            package_name,
+        } => convert_to_dtp(
+            &path_to_msg_file,
+            &path_to_destination_directory,
+            &package_name,
+        ),
         Command::ConvertToMsg {
             path_to_dtp_file,
             path_to_destination_directory,
-        } => convert_to_msg(&path_to_dtp_file, &path_to_destination_directory),
+            package_name,
+        } => convert_to_msg(
+            &path_to_dtp_file,
+            &path_to_destination_directory,
+            &package_name,
+        ),
     };
 
     if let Err(error) = result {

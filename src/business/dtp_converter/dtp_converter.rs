@@ -6,14 +6,26 @@ const STRING_BOUND_VAR_NAME_SUFFIX: &'static str = "_string_bound";
 const WSTRING_BOUND_VAR_NAME_SUFFIX: &'static str = "_wstring_bound";
 const CONSTANT_VAR_NAME_SUFFIX: &'static str = "_CONSTANT";
 
-pub fn convert(data_type: &dtp::DataType) -> Result<msg::StructuredType> {
-    let name = data_type.name().to_string();
+pub fn convert(package_name: &str, data_type: &dtp::DataType) -> Result<msg::StructuredType> {
+    let name = convert_data_type_name(package_name, data_type)?;
     let fields: Vec<msg::Field> = match data_type.data_type_kind() {
         dtp::DataTypeKind::StructuredType(structured_type) => {
             convert_structured_type(structured_type)?
         }
     };
     Ok(msg::StructuredType::new(&name, fields))
+}
+
+fn convert_data_type_name(package_name: &str, data_type: &dtp::DataType) -> Result<String> {
+    let package_name = package_name
+        .replace("_", "")
+        .replace(" ", "")
+        .replace("-", "");
+    let full_name = data_type.name();
+    Ok(full_name
+        .strip_prefix(&format!("ROS2_{}_msg_", package_name))
+        .unwrap_or_else(|| full_name)
+        .to_string())
 }
 
 fn convert_structured_type(structured_type: &dtp::StructuredType) -> Result<Vec<msg::Field>> {
@@ -346,11 +358,11 @@ fn convert_bound_var_declaration(bound_var_declaration: &dtp::VarDeclaration) ->
 }
 
 fn convert_reference(dtp_reference_string: &str) -> Result<msg::Reference> {
-    let reference_parts: Vec<&str> = dtp_reference_string.split("__").collect();
-    if reference_parts.len() == 3 {
+    let reference_parts: Vec<&str> = dtp_reference_string.split("_").collect();
+    if reference_parts.len() == 4 {
         Ok(msg::Reference::Absolute {
-            package: reference_parts[0].to_string(),
-            file: reference_parts[2].to_string(),
+            package: reference_parts[1].to_string(),
+            file: reference_parts[3].to_string(),
         })
     } else if reference_parts.len() > 1 {
         Ok(msg::Reference::Relative {
