@@ -100,7 +100,11 @@ fn convert_to_var_name(_: &msg::StructuredType, field: &msg::Field) -> Result<St
     }
 }
 
-fn convert_to_var_base_type(package_name: &str, _: &msg::StructuredType, field: &msg::Field) -> dtp::BaseType {
+fn convert_to_var_base_type(
+    package_name: &str,
+    _: &msg::StructuredType,
+    field: &msg::Field,
+) -> dtp::BaseType {
     match field.base_type() {
         msg::BaseType::Bool => dtp::BaseType::BOOL,
         msg::BaseType::Float32 => dtp::BaseType::REAL,
@@ -116,7 +120,9 @@ fn convert_to_var_base_type(package_name: &str, _: &msg::StructuredType, field: 
         msg::BaseType::Char => dtp::BaseType::CHAR,
         msg::BaseType::String(_) => dtp::BaseType::STRING,
         msg::BaseType::Wstring(_) => dtp::BaseType::WSTRING,
-        msg::BaseType::Custom(a_ref) => dtp::BaseType::Custom(convert_reference(package_name, a_ref)),
+        msg::BaseType::Custom(a_ref) => {
+            dtp::BaseType::Custom(convert_reference(package_name, a_ref))
+        }
         msg::BaseType::Byte => {
             if field.name().ends_with("_word_byte_0") {
                 dtp::BaseType::WORD
@@ -175,9 +181,7 @@ fn convert_to_var_optional_initial_value(
 fn convert_reference(package_name: &str, reference: &msg::Reference) -> String {
     match reference {
         msg::Reference::Relative { file } => convert_structured_type_name(package_name, file),
-        msg::Reference::Absolute { package, file } => {
-            format!("{}_{}", package, file)
-        }
+        msg::Reference::Absolute { package, file } => convert_structured_type_name(package, file),
     }
 }
 
