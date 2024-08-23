@@ -1,11 +1,18 @@
 use crate::business::error::Result;
 use crate::core::{dtp, msg};
 
+const WORD_SUFFIX: &'static str = "_word";
+const DWORD_SUFFIX: &'static str = "_dword";
+const LWORD_SUFFIX: &'static str = "_lword";
+const STRING_BOUND_SUFFIX: &'static str = "_string_bound";
+const ARRAY_BOUND_SUFFIX: &'static str = "_array_bound";
+const CONSTANT_SUFFIX: &'static str = "_CONSTANT";
+
 pub fn convert(package_name: &str, structured_type: &msg::StructuredType) -> Result<dtp::DataType> {
     let name = convert_structured_type_name(package_name, structured_type.name());
     let mut structured_type_children = Vec::new();
     for field in structured_type.fields().iter() {
-        let children = &mut convert_field(package_name, structured_type, field)?;
+        let children = &mut convert_field(package_name, field)?;
         structured_type_children.append(children)
     }
     let structured_type = dtp::StructuredType::new(&None, &structured_type_children);
@@ -21,22 +28,13 @@ fn convert_structured_type_name(package_name: &str, structured_type_name: &str) 
     format!("ROS2_{package_name}_msg_{structured_type_name}")
 }
 
-fn convert_field(
-    package_name: &str,
-    structured_type: &msg::StructuredType,
-    field: &msg::Field,
-) -> Result<Vec<dtp::StructuredTypeChild>> {
+fn convert_field(package_name: &str, field: &msg::Field) -> Result<Vec<dtp::StructuredTypeChild>> {
     let mut structured_type_children = Vec::new();
 
-    let is_helper = (1..8).any(|i| field.name().ends_with(&format!("_byte_{}", i)));
-    if is_helper {
-        return Ok(structured_type_children);
-    }
-
-    let var_name = convert_to_var_name(structured_type, field)?;
-    let base_type = convert_to_var_base_type(package_name, structured_type, field);
-    let array_size = convert_to_var_optional_array_size(structured_type, field)?;
-    let initial_value = convert_to_var_optional_initial_value(structured_type, field)?;
+    let var_name = convert_to_var_name(field)?;
+    let base_type = convert_to_var_base_type(package_name, field);
+    let array_size = convert_to_var_optional_array_size(field)?;
+    let initial_value = convert_to_var_optional_initial_value(field)?;
     structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(
         dtp::VarDeclaration::new(&var_name, &base_type, &array_size, &initial_value, &None),
     ));
@@ -44,14 +42,9 @@ fn convert_field(
     if let msg::BaseType::String(Some(constraint)) | msg::BaseType::Wstring(Some(constraint)) =
         field.base_type()
     {
-        let suffix = match field.base_type() {
-            msg::BaseType::String(_) => "_string_bound",
-            msg::BaseType::Wstring(_) => "_wstring_bound",
-            _ => unreachable!("due to if let guard"),
-        };
         structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(
             dtp::VarDeclaration::new(
-                &format!("{}{}", var_name, suffix),
+                &format!("{var_name}{STRING_BOUND_SUFFIX}"),
                 &dtp::BaseType::ULINT,
                 &None,
                 &Some(dtp::InitialValue::ULINT(dtp::IntLiteral {
@@ -67,7 +60,7 @@ fn convert_field(
     if let Some(msg::Constraint::BoundedDynamicArray(bound)) = field.constraint() {
         structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(
             dtp::VarDeclaration::new(
-                &format!("{}_array_bound", var_name),
+                &format!("{var_name}{ARRAY_BOUND_SUFFIX}"),
                 &dtp::BaseType::ULINT,
                 &None,
                 &Some(dtp::InitialValue::ULINT(dtp::IntLiteral {
@@ -83,36 +76,30 @@ fn convert_field(
     Ok(structured_type_children)
 }
 
-fn convert_to_var_name(_: &msg::StructuredType, field: &msg::Field) -> Result<String> {
-    let mut var_name = field.name().to_string();
-    if field.name().ends_with("_word_byte_0") {
+fn convert_to_var_name(field: &msg::Field) -> Result<String> {
+    let mut var_name = field.name();
+    if field.name().ends_with(WORD_SUFFIX) {
         var_name = var_name
-            .strip_suffix("_word_byte_0")
-            .map(|a| a.to_string())
+            .strip_suffix(WORD_SUFFIX)
             .ok_or("unexpected_suffix_error")?;
-    } else if field.name().ends_with("_dword_byte_0") {
+    } else if field.name().ends_with(DWORD_SUFFIX) {
         var_name = var_name
-            .strip_suffix("_dword_byte_0")
-            .map(|a| a.to_string())
+            .strip_suffix(DWORD_SUFFIX)
             .ok_or("unexpected_suffix_error")?;
-    } else if field.name().ends_with("_lword_byte_0") {
+    } else if field.name().ends_with(LWORD_SUFFIX) {
         var_name = var_name
-            .strip_suffix("_lword_byte_0")
-            .map(|a| a.to_string())
+            .strip_suffix(LWORD_SUFFIX)
             .ok_or("unexpected_suffix_error")?;
     };
+    let mut var_name = var_name.to_string();
 
-    match field.field_type() {
-        msg::FieldType::Variable(_) => Ok(var_name),
-        msg::FieldType::Constant(_) => Ok(var_name + "_CONSTANT"),
-    }
+    Ok(match field.field_type() {
+        msg::FieldType::Variable(_) => var_name,
+        msg::FieldType::Constant(_) => var_name + CONSTANT_SUFFIX,
+    })
 }
 
-fn convert_to_var_base_type(
-    package_name: &str,
-    _: &msg::StructuredType,
-    field: &msg::Field,
-) -> dtp::BaseType {
+fn convert_to_var_base_type(package_name: &str, field: &msg::Field) -> dtp::BaseType {
     match field.base_type() {
         msg::BaseType::Bool => dtp::BaseType::BOOL,
         msg::BaseType::Float32 => dtp::BaseType::REAL,
@@ -125,30 +112,20 @@ fn convert_to_var_base_type(
         msg::BaseType::Uint32 => dtp::BaseType::UDINT,
         msg::BaseType::Int64 => dtp::BaseType::LINT,
         msg::BaseType::Uint64 => dtp::BaseType::ULINT,
+        msg::BaseType::Byte if field.name().ends_with(WORD_SUFFIX) => dtp::BaseType::WORD,
+        msg::BaseType::Byte if field.name().ends_with(DWORD_SUFFIX) => dtp::BaseType::DWORD,
+        msg::BaseType::Byte if field.name().ends_with(LWORD_SUFFIX) => dtp::BaseType::LWORD,
+        msg::BaseType::Byte => dtp::BaseType::BYTE,
         msg::BaseType::Char => dtp::BaseType::CHAR,
         msg::BaseType::String(_) => dtp::BaseType::STRING,
         msg::BaseType::Wstring(_) => dtp::BaseType::WSTRING,
         msg::BaseType::Custom(a_ref) => {
             dtp::BaseType::Custom(convert_reference(package_name, a_ref))
         }
-        msg::BaseType::Byte => {
-            if field.name().ends_with("_word_byte_0") {
-                dtp::BaseType::WORD
-            } else if field.name().ends_with("_dword_byte_0") {
-                dtp::BaseType::DWORD
-            } else if field.name().ends_with("_lword_byte_0") {
-                dtp::BaseType::DWORD
-            } else {
-                dtp::BaseType::BYTE
-            }
-        }
     }
 }
 
-fn convert_to_var_optional_array_size(
-    _: &msg::StructuredType,
-    field: &msg::Field,
-) -> Result<Option<dtp::ArraySize>> {
+fn convert_to_var_optional_array_size(field: &msg::Field) -> Result<Option<dtp::ArraySize>> {
     Ok(field.constraint().map(|c| match c {
         msg::Constraint::StaticArray(capacity) => {
             // Erklärung: ROS2 kann nicht anders indexieren,
@@ -165,24 +142,15 @@ fn convert_to_var_optional_array_size(
     }))
 }
 
-fn convert_to_var_optional_initial_value(
-    structured_type: &msg::StructuredType,
-    field: &msg::Field,
-) -> Result<Option<dtp::InitialValue>> {
+fn convert_to_var_optional_initial_value(field: &msg::Field) -> Result<Option<dtp::InitialValue>> {
     let optional_initial_value = match field.field_type() {
         msg::FieldType::Variable(optional_initial_value) => optional_initial_value.as_ref(),
         msg::FieldType::Constant(initial_value) => Some(initial_value),
     };
 
-    if let Some(initial_value) = optional_initial_value {
-        Ok(Some(convert_initial_value(
-            initial_value,
-            field,
-            structured_type,
-            None,
-        )?))
-    } else {
-        Ok(None)
+    match optional_initial_value {
+        Some(initial_value) => Ok(Some(convert_initial_value(initial_value, field)?)),
+        None => Ok(None),
     }
 }
 
@@ -196,8 +164,6 @@ fn convert_reference(package_name: &str, reference: &msg::Reference) -> String {
 fn convert_initial_value(
     initial_value: &msg::InitialValue,
     field: &msg::Field,
-    structured_type: &msg::StructuredType,
-    index: Option<usize>,
 ) -> Result<dtp::InitialValue> {
     Ok(match initial_value {
         msg::InitialValue::Bool(v) => dtp::InitialValue::BOOL(*v),
@@ -211,53 +177,22 @@ fn convert_initial_value(
         msg::InitialValue::Uint32(v) => dtp::InitialValue::UDINT(convert_int_literal(v)),
         msg::InitialValue::Int64(v) => dtp::InitialValue::LINT(convert_int_literal(v)),
         msg::InitialValue::Uint64(v) => dtp::InitialValue::ULINT(convert_int_literal(v)),
+        msg::InitialValue::Byte(v) if field.name().ends_with(WORD_SUFFIX) => {
+            dtp::InitialValue::WORD(convert_int_literal(v))
+        }
+        msg::InitialValue::Byte(v) if field.name().ends_with(DWORD_SUFFIX) => {
+            dtp::InitialValue::DWORD(convert_int_literal(v))
+        }
+        msg::InitialValue::Byte(v) if field.name().ends_with(LWORD_SUFFIX) => {
+            dtp::InitialValue::LWORD(convert_int_literal(v))
+        }
+        msg::InitialValue::Byte(v) => dtp::InitialValue::BYTE(convert_int_literal(v)),
         msg::InitialValue::Char(v) => dtp::InitialValue::CHAR(*v),
         msg::InitialValue::String(v) => dtp::InitialValue::STRING(v.to_string()),
         msg::InitialValue::Wstring(v) => dtp::InitialValue::WSTRING(v.to_string()),
-        msg::InitialValue::Byte(byte_0) if field.name().ends_with("_word_byte_0") => {
-            let byte_1 = get_byte_of_byte_field(structured_type, field, "_word_byte_1", index)?;
-            dtp::InitialValue::WORD(((*byte_0 as u16) << 8) | (*byte_1 as u16))
-        }
-        msg::InitialValue::Byte(byte_0) if field.name().ends_with("_dword_byte_0") => {
-            let byte_1 = get_byte_of_byte_field(structured_type, field, "_dword_byte_1", index)?;
-            let byte_2 = get_byte_of_byte_field(structured_type, field, "_dword_byte_2", index)?;
-            let byte_3 = get_byte_of_byte_field(structured_type, field, "_dword_byte_3", index)?;
-            dtp::InitialValue::DWORD(
-                ((*byte_0 as u32) << 24)
-                    | ((*byte_1 as u32) << 16)
-                    | ((*byte_2 as u32) << 8)
-                    | (*byte_3 as u32),
-            )
-        }
-        msg::InitialValue::Byte(byte_0) if field.name().ends_with("_lword_byte_0") => {
-            let byte_1 = get_byte_of_byte_field(structured_type, field, "_lword_byte_1", index)?;
-            let byte_2 = get_byte_of_byte_field(structured_type, field, "_lword_byte_2", index)?;
-            let byte_3 = get_byte_of_byte_field(structured_type, field, "_lword_byte_3", index)?;
-            let byte_4 = get_byte_of_byte_field(structured_type, field, "_lword_byte_4", index)?;
-            let byte_5 = get_byte_of_byte_field(structured_type, field, "_lword_byte_5", index)?;
-            let byte_6 = get_byte_of_byte_field(structured_type, field, "_lword_byte_6", index)?;
-            let byte_7 = get_byte_of_byte_field(structured_type, field, "_lword_byte_7", index)?;
-            dtp::InitialValue::LWORD(
-                ((*byte_0 as u64) << 56)
-                    | ((*byte_1 as u64) << 48)
-                    | ((*byte_2 as u64) << 40)
-                    | ((*byte_3 as u64) << 32)
-                    | ((*byte_4 as u64) << 24)
-                    | ((*byte_5 as u64) << 16)
-                    | ((*byte_6 as u64) << 8)
-                    | (*byte_7 as u64),
-            )
-        }
-        msg::InitialValue::Byte(v) => dtp::InitialValue::BYTE(*v),
         msg::InitialValue::Array(v) => dtp::InitialValue::Array(
             v.iter()
-                .enumerate()
-                .map(|(index, value)| match field.base_type() {
-                    msg::BaseType::Byte => {
-                        convert_initial_value(value, field, structured_type, Some(index))
-                    }
-                    _ => convert_initial_value(value, field, structured_type, None),
-                })
+                .map(|value| convert_initial_value(value, field))
                 .collect::<Result<Vec<_>>>()?,
         ),
     })
@@ -275,64 +210,4 @@ fn convert_int_literal(int_literal: &msg::IntLiteral) -> dtp::IntLiteral {
         value: int_literal.value.clone(),
         e_int_literal,
     }
-}
-
-fn get_byte_of_byte_field<'a>(
-    structured_type: &'a msg::StructuredType,
-    field: &msg::Field,
-    suffix: &str,
-    index: Option<usize>,
-) -> Result<&'a u8> {
-    Ok(
-        match get_initial_value_of_byte_field(structured_type, field, suffix)? {
-            msg::InitialValue::Array(initial_values) if index.is_some() => {
-                match initial_values.get(index.unwrap()) {
-                    Some(msg::InitialValue::Byte(v)) => v,
-                    _ => return Err(format!("invalid initial values for field '{suffix}'").into()),
-                }
-            }
-            msg::InitialValue::Byte(byte1) => byte1,
-            _ => return Err(format!("invalid initial values for field '{suffix}'").into()),
-        },
-    )
-}
-
-fn get_initial_value_of_byte_field<'a>(
-    structured_type: &'a msg::StructuredType,
-    field: &msg::Field,
-    suffix: &str,
-) -> Result<&'a msg::InitialValue> {
-    let byte_field = get_helper_field_by_suffix(structured_type, field, suffix)?;
-    match byte_field.field_type() {
-        msg::FieldType::Variable(Some(v)) | msg::FieldType::Constant(v) => Ok(v),
-        _ => Err(format!("initial value for field {} expected.", byte_field.name()).into()),
-    }
-}
-
-fn get_helper_field_by_suffix<'a>(
-    structured_type: &'a msg::StructuredType,
-    field: &msg::Field,
-    suffix: &str,
-) -> Result<&'a msg::Field> {
-    let mut field_name = field.name().to_string();
-    if (0..2).any(|i| field.name().ends_with(&format!("_word_byte_{i}"))) {
-        field_name.truncate(field_name.len() - 12);
-    } else if (0..8).any(|i| field.name().ends_with(&format!("_byte_{}", i))) {
-        field_name.truncate(field_name.len() - 13);
-    }
-    field_name.push_str(suffix);
-
-    get_field(structured_type, &field_name)
-        .ok_or(format!("helper field '{field_name}' expected").into())
-}
-
-fn get_field<'a>(
-    structured_type: &'a msg::StructuredType,
-    var_name: &str,
-) -> Option<&'a msg::Field> {
-    structured_type
-        .fields()
-        .iter()
-        .filter(|field| *field.name() == *var_name)
-        .next()
 }

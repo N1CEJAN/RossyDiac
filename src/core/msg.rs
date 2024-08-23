@@ -101,9 +101,7 @@ pub enum FieldType {
 #[derive(Debug, Clone, PartialEq)]
 pub enum InitialValue {
     Bool(bool),
-    Byte(u8),
-    Float32(f32),
-    Float64(f64),
+    Byte(IntLiteral),
     Int8(IntLiteral),
     Uint8(IntLiteral),
     Int16(IntLiteral),
@@ -112,6 +110,8 @@ pub enum InitialValue {
     Uint32(IntLiteral),
     Int64(IntLiteral),
     Uint64(IntLiteral),
+    Float32(f32),
+    Float64(f64),
     // http://design.ros2.org/articles/idl_interface_definition.html
     // A 8-bit single-byte character with a numerical value
     // between 0 and 255 (see 7.2.6.2.1)

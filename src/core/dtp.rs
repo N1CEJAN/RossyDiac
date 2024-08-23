@@ -189,10 +189,10 @@ pub enum InitialValue {
     ULINT(IntLiteral),
     REAL(f32),
     LREAL(f64),
-    BYTE(u8),
-    WORD(u16),
-    DWORD(u32),
-    LWORD(u64),
+    BYTE(IntLiteral),
+    WORD(IntLiteral),
+    DWORD(IntLiteral),
+    LWORD(IntLiteral),
     // Der Einfachheit halber wird CHAR von 4diac aufgenommen
     CHAR(u8),
     STRING(String),
@@ -233,22 +233,16 @@ pub enum EIntLiteral {
 
 #[derive(Clone, Debug)]
 pub enum IntTypeName {
-    SignedIntTypeName(SignedIntTypeName),
-    UnsignedIntTypeName(UnsignedIntTypeName),
-}
-
-#[derive(Clone, Debug)]
-pub enum SignedIntTypeName {
     SINT,
     INT,
     DINT,
     LINT,
-}
-
-#[derive(Clone, Debug)]
-pub enum UnsignedIntTypeName {
     USINT,
     UINT,
     UDINT,
     ULINT,
+    BYTE,
+    WORD,
+    DWORD,
+    LWORD,
 }

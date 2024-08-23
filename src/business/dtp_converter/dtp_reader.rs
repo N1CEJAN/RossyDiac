@@ -205,18 +205,16 @@ macro_rules! parse_primitive_initial_value {
 }
 
 macro_rules! parse_int_initial_value {
-    ($iec61131_int_type_name:ident, $iec61131_primitive:ident) => {
+    ($iec61131_int_type_name:ident) => {
         Box::new(|str| {
             let literal = parse_int_literal(str).map_err(|e| e.to_owned()).finish()?.1;
-            if !matches!(
+            if matches!(
                 literal.int_type,
-                Some(IntTypeName::$iec61131_int_type_name(
-                    $iec61131_int_type_name::$iec61131_primitive
-                )) | None
+                Some(IntTypeName::$iec61131_int_type_name) | None
             ) {
-                Err("Invalid integer type name found".into())
+                Ok(InitialValue::$iec61131_int_type_name(literal))
             } else {
-                Ok(InitialValue::$iec61131_primitive(literal))
+                Err("Invalid integer type name found".into())
             }
         })
     };
@@ -244,36 +242,20 @@ fn parse_initial_value<'a>(
     } else {
         match base_type {
             BaseType::BOOL => Box::new(|str| parse_bool_initial_value(str).map(InitialValue::BOOL)),
-            BaseType::SINT => parse_int_initial_value!(SignedIntTypeName, SINT),
-            BaseType::INT => parse_int_initial_value!(SignedIntTypeName, INT),
-            BaseType::DINT => parse_int_initial_value!(SignedIntTypeName, DINT),
-            BaseType::LINT => parse_int_initial_value!(SignedIntTypeName, LINT),
-            BaseType::USINT => parse_int_initial_value!(UnsignedIntTypeName, USINT),
-            BaseType::UINT => parse_int_initial_value!(UnsignedIntTypeName, UINT),
-            BaseType::UDINT => parse_int_initial_value!(UnsignedIntTypeName, UDINT),
-            BaseType::ULINT => parse_int_initial_value!(UnsignedIntTypeName, ULINT),
+            BaseType::SINT => parse_int_initial_value!(SINT),
+            BaseType::INT => parse_int_initial_value!(INT),
+            BaseType::DINT => parse_int_initial_value!(DINT),
+            BaseType::LINT => parse_int_initial_value!(LINT),
+            BaseType::USINT => parse_int_initial_value!(USINT),
+            BaseType::UINT => parse_int_initial_value!(UINT),
+            BaseType::UDINT => parse_int_initial_value!(UDINT),
+            BaseType::ULINT => parse_int_initial_value!(ULINT),
+            BaseType::BYTE => parse_int_initial_value!(BYTE),
+            BaseType::WORD => parse_int_initial_value!(WORD),
+            BaseType::DWORD => parse_int_initial_value!(DWORD),
+            BaseType::LWORD => parse_int_initial_value!(LWORD),
             BaseType::REAL => parse_primitive_initial_value!(REAL),
             BaseType::LREAL => parse_primitive_initial_value!(LREAL),
-            BaseType::BYTE => Box::new(|str| {
-                parse_byte_string_initial_value(str)
-                    .map(|v| v as u8)
-                    .map(InitialValue::BYTE)
-            }),
-            BaseType::WORD => Box::new(|str| {
-                parse_byte_string_initial_value(str)
-                    .map(|v| v as u16)
-                    .map(InitialValue::WORD)
-            }),
-            BaseType::DWORD => Box::new(|str| {
-                parse_byte_string_initial_value(str)
-                    .map(|v| v as u32)
-                    .map(InitialValue::DWORD)
-            }),
-            BaseType::LWORD => Box::new(|str| {
-                parse_byte_string_initial_value(str)
-                    .map(|v| v as u64)
-                    .map(InitialValue::LWORD)
-            }),
             BaseType::CHAR => Box::new(|str| parse_char_initial_value(str).map(InitialValue::CHAR)),
             BaseType::STRING => {
                 Box::new(|str| parse_string_initial_value(str).map(InitialValue::STRING))
@@ -308,14 +290,6 @@ fn get_children(parent: &Element) -> Vec<&Element> {
 
 fn parse_bool_initial_value(input: &str) -> Result<bool> {
     input.to_lowercase().parse().map_err(Error::custom)
-}
-
-fn parse_byte_string_initial_value(input: &str) -> Result<u64> {
-    let parts: Vec<&str> = input.split('#').collect();
-    if parts.len() != 2 {
-        return Err("InitialValue of byte string expected to be a format of 'base#number'".into());
-    }
-    u64::from_str_radix(parts[1], 16).map_err(Error::custom)
 }
 
 fn parse_char_initial_value(input: &str) -> Result<u8> {
@@ -412,29 +386,18 @@ fn binary_int_parser(input: &str) -> IResult<&str, (&str, EIntLiteral)> {
 
 fn int_type_name_parser(input: &str) -> IResult<&str, IntTypeName> {
     alt((
-        map(signed_int_type_name_parser, IntTypeName::SignedIntTypeName),
-        map(
-            unsigned_int_type_name_parser,
-            IntTypeName::UnsignedIntTypeName,
-        ),
-    ))(input)
-}
-
-fn signed_int_type_name_parser(input: &str) -> IResult<&str, SignedIntTypeName> {
-    alt((
-        map(tag("SINT"), |_| SignedIntTypeName::SINT),
-        map(tag("INT"), |_| SignedIntTypeName::INT),
-        map(tag("DINT"), |_| SignedIntTypeName::DINT),
-        map(tag("LINT"), |_| SignedIntTypeName::LINT),
-    ))(input)
-}
-
-fn unsigned_int_type_name_parser(input: &str) -> IResult<&str, UnsignedIntTypeName> {
-    alt((
-        map(tag("USINT"), |_| UnsignedIntTypeName::USINT),
-        map(tag("UINT"), |_| UnsignedIntTypeName::UINT),
-        map(tag("UDINT"), |_| UnsignedIntTypeName::UDINT),
-        map(tag("ULINT"), |_| UnsignedIntTypeName::ULINT),
+        map(tag("SINT"), |_| IntTypeName::SINT),
+        map(tag("INT"), |_| IntTypeName::INT),
+        map(tag("DINT"), |_| IntTypeName::DINT),
+        map(tag("LINT"), |_| IntTypeName::LINT),
+        map(tag("USINT"), |_| IntTypeName::USINT),
+        map(tag("UINT"), |_| IntTypeName::UINT),
+        map(tag("UDINT"), |_| IntTypeName::UDINT),
+        map(tag("ULINT"), |_| IntTypeName::ULINT),
+        map(tag("BYTE"), |_| IntTypeName::BYTE),
+        map(tag("WORD"), |_| IntTypeName::WORD),
+        map(tag("DWORD"), |_| IntTypeName::DWORD),
+        map(tag("LWORD"), |_| IntTypeName::LWORD),
     ))(input)
 }
 

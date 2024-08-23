@@ -2,7 +2,7 @@ use std::path::Path;
 
 use log::info;
 use nom::branch::alt;
-use nom::bytes::complete::{tag, take_until1, take_while1};
+use nom::bytes::complete::{is_a, tag, take_until1, take_while1};
 use nom::character::complete::{
     digit1, hex_digit1, i16, i32, i64, line_ending, multispace1, oct_digit1, u16, u32, u64, u8,
 };
@@ -211,7 +211,7 @@ fn dec_int_parser(input: &str) -> IResult<&str, IntLiteral> {
 
 fn bin_int_parser(input: &str) -> IResult<&str, IntLiteral> {
     map(
-        preceded(alt((tag("0b"), tag("0B"))), oct_digit1),
+        preceded(alt((tag("0b"), tag("0B"))), bin_digit),
         |str: &str| IntLiteral {
             value: str.to_string(),
             e_int_literal: EIntLiteral::BinaryInt,
@@ -262,4 +262,8 @@ fn parse_inner_string(quote: char) -> impl FnMut(&str) -> IResult<&str, String> 
         }
         Err(nom::Err::Incomplete(nom::Needed::Unknown))
     }
+}
+
+fn bin_digit(input: &str) -> IResult<&str, &str> {
+    is_a("01")(input)
 }

@@ -136,13 +136,13 @@ fn initial_value_to_string(initial_value: &InitialValue) -> String {
         | InitialValue::USINT(int_literal)
         | InitialValue::UINT(int_literal)
         | InitialValue::UDINT(int_literal)
-        | InitialValue::ULINT(int_literal) => int_literal_as_string(int_literal),
+        | InitialValue::ULINT(int_literal)
+        | InitialValue::BYTE(int_literal)
+        | InitialValue::WORD(int_literal)
+        | InitialValue::DWORD(int_literal)
+        | InitialValue::LWORD(int_literal) => int_literal_as_string(int_literal),
         InitialValue::REAL(value) => value.to_string(),
         InitialValue::LREAL(value) => value.to_string(),
-        InitialValue::BYTE(value) => format!("16#{:02X}", value),
-        InitialValue::WORD(value) => format!("16#{:04X}", value),
-        InitialValue::DWORD(value) => format!("16#{:08X}", value),
-        InitialValue::LWORD(value) => format!("16#{:016X}", value),
         InitialValue::CHAR(value) => format!("'${:02X}'", value),
         InitialValue::STRING(value) => format!("'{value}'"),
         InitialValue::WSTRING(value) => format!("&quot;{value}&quot;"),
@@ -160,19 +160,20 @@ fn int_literal_as_string(int_literal: &IntLiteral) -> String {
     let mut string = String::new();
     if let Some(type_name) = int_literal.int_type.as_ref() {
         string.push_str(match type_name {
-            IntTypeName::SignedIntTypeName(type_name) => match type_name {
-                SignedIntTypeName::SINT => "SINT#",
-                SignedIntTypeName::INT => "INT#",
-                SignedIntTypeName::DINT => "DINT#",
-                SignedIntTypeName::LINT => "LINT#",
-            },
-            IntTypeName::UnsignedIntTypeName(type_name) => match type_name {
-                UnsignedIntTypeName::USINT => "USINT#",
-                UnsignedIntTypeName::UINT => "UINT#",
-                UnsignedIntTypeName::UDINT => "UDINT#",
-                UnsignedIntTypeName::ULINT => "ULINT#",
-            },
-        })
+            IntTypeName::SINT => "SINT",
+            IntTypeName::INT => "INT",
+            IntTypeName::DINT => "DINT",
+            IntTypeName::LINT => "LINT",
+            IntTypeName::USINT => "USINT",
+            IntTypeName::UINT => "UINT",
+            IntTypeName::UDINT => "UDINT",
+            IntTypeName::ULINT => "ULINT",
+            IntTypeName::BYTE => "BYTE",
+            IntTypeName::WORD => "WORD",
+            IntTypeName::DWORD => "DWORD",
+            IntTypeName::LWORD => "LWORD",
+        });
+        string.push_str("#");
     }
     string.push_str(
         &(match &int_literal.e_int_literal {
