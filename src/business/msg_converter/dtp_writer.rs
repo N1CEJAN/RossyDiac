@@ -74,7 +74,7 @@ fn create_var_declaration_element(var_declaration: &VarDeclaration) -> XMLNode {
             XML_ATTRIBUTE_ARRAY_SIZE.to_string(),
             match array_size {
                 ArraySize::Dynamic => String::from('*'),
-                ArraySize::Static(Capacity::InPlace(capacity)) => format!("0..{}", capacity - 1),
+                ArraySize::Static(Capacity::InPlace(capacity)) => format!("{capacity}"),
                 ArraySize::Static(Capacity::Shifted(start, end)) => format!("{start}..{end}"),
             },
         );

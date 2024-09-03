@@ -91,7 +91,7 @@ fn convert_to_var_name(field: &msg::Field) -> Result<String> {
             .strip_suffix(LWORD_SUFFIX)
             .ok_or("unexpected_suffix_error")?;
     };
-    let mut var_name = var_name.to_string();
+    let var_name = var_name.to_string();
 
     Ok(match field.field_type() {
         msg::FieldType::Variable(_) => var_name,
@@ -131,10 +131,9 @@ fn convert_to_var_optional_array_size(field: &msg::Field) -> Result<Option<dtp::
             // Erklärung: ROS2 kann nicht anders indexieren,
             // weswegen derzeit die Information einer anderen
             // Indexierung verloren geht.
-            // cross(InPlace(c)) => Shifted(0, c-1)
-            // cross(Shifted(0, e)) => Shifted(0, e)
-            // cross(Shifted(s, e)) => Shifted(0 ,e-s+1)
-            dtp::ArraySize::Static(dtp::Capacity::Shifted(0, *capacity - 1))
+            // cross(InPlace(c)) => InPlace(c)
+            // cross(Shifted(s, e)) => InPlace(e-s+1)
+            dtp::ArraySize::Static(dtp::Capacity::InPlace(*capacity))
         }
         msg::Constraint::UnboundedDynamicArray | msg::Constraint::BoundedDynamicArray(_) => {
             dtp::ArraySize::Dynamic

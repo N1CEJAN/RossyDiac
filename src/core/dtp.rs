@@ -173,7 +173,7 @@ pub enum ArraySize {
 #[derive(Clone, Debug)]
 pub enum Capacity {
     InPlace(usize),
-    Shifted(usize, usize),
+    Shifted(i64, i64),
 }
 
 #[derive(Clone, Debug)]
