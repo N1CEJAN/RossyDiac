@@ -3,9 +3,7 @@ use std::path::Path;
 use log::info;
 use nom::branch::alt;
 use nom::bytes::complete::{is_a, tag, take_until1, take_while1};
-use nom::character::complete::{
-    digit1, hex_digit1, i16, i32, i64, line_ending, multispace1, oct_digit1, u16, u32, u64, u8,
-};
+use nom::character::complete::{digit1, hex_digit1, line_ending, u8, multispace1, oct_digit1};
 use nom::combinator::{eof, map, opt, verify};
 use nom::multi::{many0, separated_list0};
 use nom::number::complete::{double, float};
@@ -161,7 +159,7 @@ fn parse_initial_value<'a>(
                 map(tag("true"), |_| InitialValue::Bool(true)),
                 map(tag("false"), |_| InitialValue::Bool(false)),
             ))),
-            BaseType::Byte => Box::new(map(u8, InitialValue::Byte)),
+            BaseType::Byte => Box::new(map(parse_int_literal, InitialValue::Byte)),
             BaseType::Float32 => Box::new(map(float, InitialValue::Float32)),
             BaseType::Float64 => Box::new(map(double, InitialValue::Float64)),
             BaseType::Int8 => Box::new(map(parse_int_literal, InitialValue::Int8)),

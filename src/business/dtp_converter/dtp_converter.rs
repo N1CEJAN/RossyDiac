@@ -1,3 +1,4 @@
+use log::debug;
 use crate::business::error::{Error, Result};
 use crate::core::{dtp, msg};
 
@@ -138,7 +139,7 @@ fn convert_to_msg_constraint(
         }
         // Annahme: Es werden nu 0..x Shifts angegeben
         Some(dtp::ArraySize::Static(dtp::Capacity::Shifted(start, end))) => {
-            Some(msg::Constraint::StaticArray(end - start + 1))
+            Some(msg::Constraint::StaticArray((end - start + 1) as usize))
         }
         None => None,
     };
@@ -152,13 +153,12 @@ fn convert_to_field_name(var_declaration: &dtp::VarDeclaration) -> Result<String
             .strip_suffix(CONSTANT_SUFFIX)
             .ok_or(format!("_CONSTANT suffix not found on name \"{name}\""))?;
     }
-    name = match var_declaration.base_type() {
-        dtp::BaseType::WORD => &format!("{}{}", name, WORD_SUFFIX),
-        dtp::BaseType::DWORD => &format!("{}{}", name, DWORD_SUFFIX),
-        dtp::BaseType::LWORD => &format!("{}{}", name, LWORD_SUFFIX),
-        _ => name,
-    };
-    Ok(name.to_string())
+    Ok(match var_declaration.base_type() {
+        dtp::BaseType::WORD => format!("{}{}", name, WORD_SUFFIX),
+        dtp::BaseType::DWORD => format!("{}{}", name, DWORD_SUFFIX),
+        dtp::BaseType::LWORD => format!("{}{}", name, LWORD_SUFFIX),
+        _ => name.to_string(),
+    })
 }
 
 fn convert_to_msg_initial_value(var_declaration: &dtp::VarDeclaration) -> Result<msg::FieldType> {
@@ -262,12 +262,13 @@ fn convert_bound_var_declaration(bound_var_declaration: &dtp::VarDeclaration) ->
 
 fn convert_reference(dtp_reference_string: &str) -> Result<msg::Reference> {
     let reference_parts: Vec<&str> = dtp_reference_string.split("_").collect();
+    debug!("Reference parts {:?}", reference_parts);
     if reference_parts.len() == 4 {
         Ok(msg::Reference::Absolute {
             package: reference_parts[1].to_string(),
             file: reference_parts[3].to_string(),
         })
-    } else if reference_parts.len() > 1 {
+    } else if reference_parts.len() == 1 {
         Ok(msg::Reference::Relative {
             file: dtp_reference_string.to_string(),
         })
