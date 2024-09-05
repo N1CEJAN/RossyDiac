@@ -100,7 +100,7 @@ pub enum FieldType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum InitialValue {
-    Bool(bool),
+    Bool(BoolLiteral),
     Byte(IntLiteral),
     Int8(IntLiteral),
     Uint8(IntLiteral),
@@ -117,22 +117,23 @@ pub enum InitialValue {
     // between 0 and 255 (see 7.2.6.2.1)
     // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
     // Constructors: [...](note: char fields are considered numeric for C++).
-    Char(u8),
+    Char(IntLiteral),
     String(String),
     Wstring(String),
     Array(Vec<InitialValue>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct IntLiteral {
-    pub value: String,
-    pub e_int_literal: EIntLiteral,
+pub enum BoolLiteral {
+    String(bool),
+    Int(bool),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum EIntLiteral {
-    DecimalInt,
-    BinaryInt,
-    OctalInt,
-    HexalInt,
+pub enum IntLiteral {
+    SignedDecimalInt(i64),
+    UnsignedDecimalInt(u64),
+    BinaryInt(u64),
+    OctalInt(u64),
+    HexalInt(u64),
 }

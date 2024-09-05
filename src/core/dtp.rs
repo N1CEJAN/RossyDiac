@@ -82,12 +82,7 @@ pub enum StructuredTypeChild {
 
 impl StructuredTypeChild {
     pub fn matches_any<T: AsRef<str>>(str: T) -> bool {
-        match str.as_ref() {
-            "VarDeclaration"
-            // | "SubrangeVarDeclaration"
-            => true,
-            _ => false,
-        }
+        matches!(str.as_ref(), "VarDeclaration")
     }
 }
 
@@ -155,12 +150,6 @@ pub enum BaseType {
     CHAR,
     STRING,
     WSTRING,
-    TIME,
-    DATE,
-    TIME_OF_DAY,
-    TOD,
-    DATE_AND_TIME,
-    DT,
     Custom(String),
 }
 
@@ -178,7 +167,7 @@ pub enum Capacity {
 
 #[derive(Clone, Debug)]
 pub enum InitialValue {
-    BOOL(bool),
+    BOOL(BoolLiteral),
     SINT(IntLiteral),
     INT(IntLiteral),
     DINT(IntLiteral),
@@ -193,16 +182,9 @@ pub enum InitialValue {
     WORD(IntLiteral),
     DWORD(IntLiteral),
     LWORD(IntLiteral),
-    // Der Einfachheit halber wird CHAR von 4diac aufgenommen
-    CHAR(u8),
+    CHAR(CharLiteral),
     STRING(String),
     WSTRING(String),
-    TIME(i64),
-    DATE(u64),
-    TIME_OF_DAY(u64),
-    TOD(u64),
-    DATE_AND_TIME(u64),
-    DT(u64),
     Array(Vec<InitialValue>),
 }
 
@@ -217,32 +199,22 @@ pub const XML_ATTRIBUTE_INITIAL_VALUE: &str = "InitialValue";
 pub const XML_ATTRIBUTE_COMMENT: &str = "Comment";
 
 #[derive(Clone, Debug)]
-pub struct IntLiteral {
-    pub int_type: Option<IntTypeName>,
-    pub value: String,
-    pub e_int_literal: EIntLiteral,
+pub enum BoolLiteral {
+    String(bool),
+    Int(bool),
 }
 
 #[derive(Clone, Debug)]
-pub enum EIntLiteral {
-    DecimalInt,
-    BinaryInt,
-    OctalInt,
-    HexalInt,
+pub enum IntLiteral {
+    SignedDecimalInt(i64),
+    UnsignedDecimalInt(u64),
+    BinaryInt(u64),
+    OctalInt(u64),
+    HexalInt(u64),
 }
 
 #[derive(Clone, Debug)]
-pub enum IntTypeName {
-    SINT,
-    INT,
-    DINT,
-    LINT,
-    USINT,
-    UINT,
-    UDINT,
-    ULINT,
-    BYTE,
-    WORD,
-    DWORD,
-    LWORD,
+pub enum CharLiteral {
+    Value(char),
+    Hex(char),
 }

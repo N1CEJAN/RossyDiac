@@ -47,11 +47,9 @@ fn convert_field(package_name: &str, field: &msg::Field) -> Result<Vec<dtp::Stru
                 &format!("{var_name}{STRING_BOUND_SUFFIX}"),
                 &dtp::BaseType::ULINT,
                 &None,
-                &Some(dtp::InitialValue::ULINT(dtp::IntLiteral {
-                    value: constraint.to_string(),
-                    int_type: None,
-                    e_int_literal: dtp::EIntLiteral::DecimalInt,
-                })),
+                &Some(dtp::InitialValue::ULINT(
+                    dtp::IntLiteral::UnsignedDecimalInt(*constraint as u64),
+                )),
                 &None,
             ),
         ));
@@ -63,11 +61,9 @@ fn convert_field(package_name: &str, field: &msg::Field) -> Result<Vec<dtp::Stru
                 &format!("{var_name}{ARRAY_BOUND_SUFFIX}"),
                 &dtp::BaseType::ULINT,
                 &None,
-                &Some(dtp::InitialValue::ULINT(dtp::IntLiteral {
-                    value: bound.to_string(),
-                    int_type: None,
-                    e_int_literal: dtp::EIntLiteral::DecimalInt,
-                })),
+                &Some(dtp::InitialValue::ULINT(
+                    dtp::IntLiteral::UnsignedDecimalInt(*bound as u64),
+                )),
                 &None,
             ),
         ));
@@ -165,7 +161,7 @@ fn convert_initial_value(
     field: &msg::Field,
 ) -> Result<dtp::InitialValue> {
     Ok(match initial_value {
-        msg::InitialValue::Bool(v) => dtp::InitialValue::BOOL(*v),
+        msg::InitialValue::Bool(v) => dtp::InitialValue::BOOL(convert_bool_literal(v)),
         msg::InitialValue::Float32(v) => dtp::InitialValue::REAL(*v),
         msg::InitialValue::Float64(v) => dtp::InitialValue::LREAL(*v),
         msg::InitialValue::Int8(v) => dtp::InitialValue::SINT(convert_int_literal(v)),
@@ -186,7 +182,7 @@ fn convert_initial_value(
             dtp::InitialValue::LWORD(convert_int_literal(v))
         }
         msg::InitialValue::Byte(v) => dtp::InitialValue::BYTE(convert_int_literal(v)),
-        msg::InitialValue::Char(v) => dtp::InitialValue::CHAR(*v),
+        msg::InitialValue::Char(v) => dtp::InitialValue::CHAR(convert_to_char_literal(v)?),
         msg::InitialValue::String(v) => dtp::InitialValue::STRING(v.to_string()),
         msg::InitialValue::Wstring(v) => dtp::InitialValue::WSTRING(v.to_string()),
         msg::InitialValue::Array(v) => dtp::InitialValue::Array(
@@ -197,16 +193,43 @@ fn convert_initial_value(
     })
 }
 
+fn convert_bool_literal(bool_literal: &msg::BoolLiteral) -> dtp::BoolLiteral {
+    match bool_literal {
+        msg::BoolLiteral::String(bool) => dtp::BoolLiteral::String(*bool),
+        msg::BoolLiteral::Int(bool) => dtp::BoolLiteral::Int(*bool),
+    }
+}
+
+fn convert_to_char_literal(int_literal: &msg::IntLiteral) -> Result<dtp::CharLiteral> {
+    Ok(match int_literal {
+        msg::IntLiteral::SignedDecimalInt(i64) => dtp::CharLiteral::Hex(i64_to_char(i64)?),
+        msg::IntLiteral::UnsignedDecimalInt(u64)
+        | msg::IntLiteral::BinaryInt(u64)
+        | msg::IntLiteral::OctalInt(u64)
+        | msg::IntLiteral::HexalInt(u64) => dtp::CharLiteral::Hex(u64_to_char(u64)?),
+    })
+}
+
 fn convert_int_literal(int_literal: &msg::IntLiteral) -> dtp::IntLiteral {
-    let e_int_literal = match int_literal.e_int_literal {
-        msg::EIntLiteral::DecimalInt => dtp::EIntLiteral::DecimalInt,
-        msg::EIntLiteral::BinaryInt => dtp::EIntLiteral::BinaryInt,
-        msg::EIntLiteral::OctalInt => dtp::EIntLiteral::OctalInt,
-        msg::EIntLiteral::HexalInt => dtp::EIntLiteral::HexalInt,
-    };
-    dtp::IntLiteral {
-        int_type: None,
-        value: int_literal.value.clone(),
-        e_int_literal,
+    match int_literal {
+        msg::IntLiteral::SignedDecimalInt(i64) => dtp::IntLiteral::SignedDecimalInt(*i64),
+        msg::IntLiteral::UnsignedDecimalInt(u64) => dtp::IntLiteral::UnsignedDecimalInt(*u64),
+        msg::IntLiteral::BinaryInt(u64) => dtp::IntLiteral::BinaryInt(*u64),
+        msg::IntLiteral::OctalInt(u64) => dtp::IntLiteral::OctalInt(*u64),
+        msg::IntLiteral::HexalInt(u64) => dtp::IntLiteral::HexalInt(*u64),
+    }
+}
+
+fn i64_to_char(value: &i64) -> Result<char> {
+    match char::from_u32(*value as u32) {
+        None => Err("The i64 is not a valid Unicode character.".into()),
+        Some(c) => Ok(c),
+    }
+}
+
+fn u64_to_char(value: &u64) -> Result<char> {
+    match char::from_u32(*value as u32) {
+        None => Err("The u64 is not a valid Unicode character.".into()),
+        Some(c) => Ok(c),
     }
 }

@@ -2,10 +2,11 @@ use log::info;
 use nom::branch::alt;
 use nom::bytes::complete::{is_a, tag};
 use nom::character::complete::{digit1, hex_digit1, oct_digit1};
-use nom::combinator::{map, opt, recognize};
+use nom::combinator::{map_res, opt, recognize};
 use nom::multi::{many0, many1};
-use nom::sequence::{preceded, terminated, tuple};
+use nom::sequence::{preceded, tuple};
 use nom::{Finish, IResult};
+use std::num::ParseIntError;
 use xmltree::{Element, XMLNode};
 
 use crate::business::error::{Error, Result};
@@ -165,12 +166,6 @@ fn parse_base_type(string: &str) -> BaseType {
         "CHAR" => BaseType::CHAR,
         "STRING" => BaseType::STRING,
         "WSTRING" => BaseType::WSTRING,
-        "TIME" => BaseType::TIME,
-        "DATE" => BaseType::DATE,
-        "TIME_OF_DAY" => BaseType::TIME_OF_DAY,
-        "TOD" => BaseType::TOD,
-        "DATE_AND_TIME" => BaseType::DATE_AND_TIME,
-        "DT" => BaseType::DT,
         _ => BaseType::Custom(string.to_string()),
     }
 }
@@ -204,22 +199,6 @@ macro_rules! parse_primitive_initial_value {
     };
 }
 
-macro_rules! parse_int_initial_value {
-    ($iec61131_int_type_name:ident) => {
-        Box::new(|str| {
-            let literal = parse_int_literal(str).map_err(|e| e.to_owned()).finish()?.1;
-            if matches!(
-                literal.int_type,
-                Some(IntTypeName::$iec61131_int_type_name) | None
-            ) {
-                Ok(InitialValue::$iec61131_int_type_name(literal))
-            } else {
-                Err("Invalid integer type name found".into())
-            }
-        })
-    };
-}
-
 fn parse_initial_value<'a>(
     base_type: &'a BaseType,
     array_size: &'a Option<ArraySize>,
@@ -241,34 +220,26 @@ fn parse_initial_value<'a>(
         })
     } else {
         match base_type {
-            BaseType::BOOL => Box::new(|str| parse_bool_initial_value(str).map(InitialValue::BOOL)),
-            BaseType::SINT => parse_int_initial_value!(SINT),
-            BaseType::INT => parse_int_initial_value!(INT),
-            BaseType::DINT => parse_int_initial_value!(DINT),
-            BaseType::LINT => parse_int_initial_value!(LINT),
-            BaseType::USINT => parse_int_initial_value!(USINT),
-            BaseType::UINT => parse_int_initial_value!(UINT),
-            BaseType::UDINT => parse_int_initial_value!(UDINT),
-            BaseType::ULINT => parse_int_initial_value!(ULINT),
-            BaseType::BYTE => parse_int_initial_value!(BYTE),
-            BaseType::WORD => parse_int_initial_value!(WORD),
-            BaseType::DWORD => parse_int_initial_value!(DWORD),
-            BaseType::LWORD => parse_int_initial_value!(LWORD),
+            BaseType::BOOL => Box::new(|str| parse_bool_literal(str).map(InitialValue::BOOL)),
+            BaseType::SINT => Box::new(|str| parse_int_literal(str).map(InitialValue::SINT)),
+            BaseType::INT => Box::new(|str| parse_int_literal(str).map(InitialValue::INT)),
+            BaseType::DINT => Box::new(|str| parse_int_literal(str).map(InitialValue::DINT)),
+            BaseType::LINT => Box::new(|str| parse_int_literal(str).map(InitialValue::LINT)),
+            BaseType::USINT => Box::new(|str| parse_int_literal(str).map(InitialValue::USINT)),
+            BaseType::UINT => Box::new(|str| parse_int_literal(str).map(InitialValue::UINT)),
+            BaseType::UDINT => Box::new(|str| parse_int_literal(str).map(InitialValue::UDINT)),
+            BaseType::ULINT => Box::new(|str| parse_int_literal(str).map(InitialValue::ULINT)),
+            BaseType::BYTE => Box::new(|str| parse_int_literal(str).map(InitialValue::BYTE)),
+            BaseType::WORD => Box::new(|str| parse_int_literal(str).map(InitialValue::WORD)),
+            BaseType::DWORD => Box::new(|str| parse_int_literal(str).map(InitialValue::DWORD)),
+            BaseType::LWORD => Box::new(|str| parse_int_literal(str).map(InitialValue::LWORD)),
             BaseType::REAL => parse_primitive_initial_value!(REAL),
             BaseType::LREAL => parse_primitive_initial_value!(LREAL),
-            BaseType::CHAR => Box::new(|str| parse_char_initial_value(str).map(InitialValue::CHAR)),
-            BaseType::STRING => {
-                Box::new(|str| parse_string_initial_value(str).map(InitialValue::STRING))
-            }
+            BaseType::CHAR => Box::new(|str| parse_char_literal(str).map(InitialValue::CHAR)),
+            BaseType::STRING => Box::new(|str| parse_string_literal(str).map(InitialValue::STRING)),
             BaseType::WSTRING => {
-                Box::new(|str| parse_wstring_initial_value(str).map(InitialValue::WSTRING))
+                Box::new(|str| parse_wstring_literal(str).map(InitialValue::WSTRING))
             }
-            BaseType::TIME => parse_primitive_initial_value!(TIME),
-            BaseType::DATE => parse_primitive_initial_value!(DATE),
-            BaseType::TIME_OF_DAY => parse_primitive_initial_value!(TIME_OF_DAY),
-            BaseType::TOD => parse_primitive_initial_value!(TOD),
-            BaseType::DATE_AND_TIME => parse_primitive_initial_value!(DATE_AND_TIME),
-            BaseType::DT => parse_primitive_initial_value!(DT),
             BaseType::Custom(_) => unreachable!(),
         }
     }
@@ -288,11 +259,17 @@ fn get_children(parent: &Element) -> Vec<&Element> {
         .collect()
 }
 
-fn parse_bool_initial_value(input: &str) -> Result<bool> {
-    input.to_lowercase().parse().map_err(Error::custom)
+fn parse_bool_literal(input: &str) -> Result<BoolLiteral> {
+    if input == "TRUE" || input == "FALSE" {
+        Ok(BoolLiteral::String(input == "TRUE"))
+    } else if input == "1" || input == "0" {
+        Ok(BoolLiteral::Int(input == "1"))
+    } else {
+        Err("Invalid boolean literal".into())
+    }
 }
 
-fn parse_char_initial_value(input: &str) -> Result<u8> {
+fn parse_char_literal(input: &str) -> Result<CharLiteral> {
     if !(input.starts_with("'") && input.ends_with("'")) {
         return Err("Input must be delimited with 'value'".into());
     }
@@ -300,105 +277,106 @@ fn parse_char_initial_value(input: &str) -> Result<u8> {
 
     // Annahme: CHAR's werden nur im Format '$<h0><h1>' eingegeben
     if !actual_value.starts_with("$") {
-        return Err("Input must start with '$'".into());
+        return Err(
+            "Only hex char literals are supported. Hex char literals start with '$'".into(),
+        );
     }
     // Strip the '$' prefix
     let hex_part = &actual_value[1..];
     // Parse the remaining part as a hexadecimal number
-    let number =
-        u8::from_str_radix(hex_part, 16).map_err(|_| "Invalid hexadecimal number".to_string())?;
-
-    Ok(number)
+    let number = u8::from_str_radix(hex_part, 16).map_err(|_| "Invalid hexadecimal number")?;
+    match char::from_u32(number as u32) {
+        Some(c) => Ok(CharLiteral::Hex(c)),
+        None => Err("Invalid char given. UTF-8 hex expected.".into()),
+    }
 }
 
-fn parse_string_initial_value(input: &str) -> Result<String> {
+fn parse_string_literal(input: &str) -> Result<String> {
     if !(input.starts_with("'") && input.ends_with("'")) {
         return Err("InitialValue of STRING must be delimited with ''".into());
     }
     Ok(input[1..input.len() - 1].to_string())
 }
 
-fn parse_wstring_initial_value(input: &str) -> Result<String> {
+fn parse_wstring_literal(input: &str) -> Result<String> {
     if !(input.starts_with("\"") && input.ends_with("\"")) {
         return Err("InitialValue of WSTRING must be delimited with &quot;&quot;".into());
     }
     Ok(input[1..input.len() - 1].to_string())
 }
 
-fn parse_int_literal(input: &str) -> IResult<&str, IntLiteral> {
-    map(
+fn parse_int_literal(input: &str) -> Result<IntLiteral> {
+    Ok(alt((
+        hex_int_parser,
+        octal_int_parser,
+        bin_int_parser,
+        dec_int_parser,
+    ))(input)
+    .map_err(|e| e.to_owned())
+    .finish()?
+    .1)
+}
+
+fn dec_int_parser(input: &str) -> IResult<&str, IntLiteral> {
+    map_res(
         tuple((
-            opt(terminated(int_type_name_parser, tag("#"))),
-            alt((
-                hex_int_parser,
-                octal_int_parser,
-                binary_int_parser,
-                dec_int_parser,
-            )),
+            opt(alt((tag("-"), tag("+")))),
+            recognize(tuple((digit1, many0(preceded(opt(tag("_")), digit1))))),
         )),
-        |(int_type, (str, e_int_literal))| IntLiteral {
-            int_type,
-            value: str.to_string(),
-            e_int_literal,
+        |(sign, str): (Option<&str>, &str)| {
+            let cleaned_str = str.replace("_", "");
+            Ok::<IntLiteral, ParseIntError>(if let Some(sign) = sign {
+                let to_parse = format!("{sign}{cleaned_str}");
+                let i64 = i64::from_str_radix(&to_parse, 10)?;
+                IntLiteral::SignedDecimalInt(i64)
+            } else {
+                let u64 = u64::from_str_radix(&cleaned_str, 10)?;
+                IntLiteral::UnsignedDecimalInt(u64)
+            })
         },
     )(input)
 }
 
-fn dec_int_parser(input: &str) -> IResult<&str, (&str, EIntLiteral)> {
-    map(
-        recognize(tuple((
-            opt(alt((tag("-"), tag("+")))),
-            tuple((digit1, many0(preceded(opt(tag("_")), digit1)))),
-        ))),
-        |str: &str| (str, EIntLiteral::DecimalInt),
-    )(input)
-}
-
-fn hex_int_parser(input: &str) -> IResult<&str, (&str, EIntLiteral)> {
+fn hex_int_parser(input: &str) -> IResult<&str, IntLiteral> {
     preceded(
         tag("16#"),
-        map(
+        map_res(
             recognize(many1(preceded(opt(tag("_")), hex_digit1))),
-            |str| (str, EIntLiteral::HexalInt),
+            |str: &str| {
+                let cleaned_str = str.replace("_", "");
+                let u64 = u64::from_str_radix(&cleaned_str, 16)?;
+                Ok::<IntLiteral, ParseIntError>(IntLiteral::HexalInt(u64))
+            },
         ),
     )(input)
 }
 
-fn octal_int_parser(input: &str) -> IResult<&str, (&str, EIntLiteral)> {
+fn octal_int_parser(input: &str) -> IResult<&str, IntLiteral> {
     preceded(
         tag("8#"),
-        map(
+        map_res(
             recognize(many1(preceded(opt(tag("_")), oct_digit1))),
-            |str| (str, EIntLiteral::OctalInt),
+            |str: &str| {
+                let cleaned_str = str.replace("_", "");
+                let u64 = u64::from_str_radix(&cleaned_str, 8)?;
+                Ok::<IntLiteral, ParseIntError>(IntLiteral::OctalInt(u64))
+            },
         ),
     )(input)
 }
 
-fn binary_int_parser(input: &str) -> IResult<&str, (&str, EIntLiteral)> {
+fn bin_int_parser(input: &str) -> IResult<&str, IntLiteral> {
     preceded(
         tag("2#"),
-        map(
+        map_res(
             recognize(many1(preceded(opt(tag("_")), bin_digit))),
-            |str| (str, EIntLiteral::BinaryInt),
+            |str: &str| {
+                let cleaned_str = str.replace("_", "");
+                let u64 = u64::from_str_radix(&cleaned_str, 2)?;
+                Ok::<IntLiteral, ParseIntError>(IntLiteral::BinaryInt(u64))
+            },
         ),
     )(input)
-}
-
-fn int_type_name_parser(input: &str) -> IResult<&str, IntTypeName> {
-    alt((
-        map(tag("SINT"), |_| IntTypeName::SINT),
-        map(tag("INT"), |_| IntTypeName::INT),
-        map(tag("DINT"), |_| IntTypeName::DINT),
-        map(tag("LINT"), |_| IntTypeName::LINT),
-        map(tag("USINT"), |_| IntTypeName::USINT),
-        map(tag("UINT"), |_| IntTypeName::UINT),
-        map(tag("UDINT"), |_| IntTypeName::UDINT),
-        map(tag("ULINT"), |_| IntTypeName::ULINT),
-        map(tag("BYTE"), |_| IntTypeName::BYTE),
-        map(tag("WORD"), |_| IntTypeName::WORD),
-        map(tag("DWORD"), |_| IntTypeName::DWORD),
-        map(tag("LWORD"), |_| IntTypeName::LWORD),
-    ))(input)
 }
 
 fn bin_digit(input: &str) -> IResult<&str, &str> {

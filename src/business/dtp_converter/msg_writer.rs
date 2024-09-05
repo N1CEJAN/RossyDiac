@@ -2,7 +2,7 @@ use std::fs;
 
 use crate::business::error::Result;
 use crate::core::msg::{
-    BaseType, Constraint, EIntLiteral, Field, FieldType, InitialValue, IntLiteral, Reference,
+    BaseType, BoolLiteral, Constraint, Field, FieldType, InitialValue, IntLiteral, Reference,
     StructuredType,
 };
 
@@ -89,7 +89,7 @@ fn constraints_as_string(constraint: Option<&Constraint>) -> String {
 
 fn initial_value_as_string(initial_value: &InitialValue) -> String {
     match initial_value {
-        InitialValue::Bool(value) => value.to_string(),
+        InitialValue::Bool(value) => bool_literal_as_string(value),
         InitialValue::Byte(value)
         | InitialValue::Int8(value)
         | InitialValue::Uint8(value)
@@ -101,7 +101,7 @@ fn initial_value_as_string(initial_value: &InitialValue) -> String {
         | InitialValue::Uint64(value) => int_literal_as_string(value),
         InitialValue::Float32(value) => value.to_string(),
         InitialValue::Float64(value) => value.to_string(),
-        InitialValue::Char(value) => value.to_string(),
+        InitialValue::Char(value) => int_literal_as_string(value),
         InitialValue::String(value) => format!("\"{}\"", value.replace("\"", "\\\"")),
         InitialValue::Wstring(value) => format!("\"{}\"", value.replace("\"", "\\\"")),
         InitialValue::Array(values) => array_of_initial_values_as_string(values),
@@ -119,11 +119,21 @@ fn array_of_initial_values_as_string(values: &[InitialValue]) -> String {
     )
 }
 
+fn bool_literal_as_string(bool_literal: &BoolLiteral) -> String {
+    match bool_literal {
+        BoolLiteral::String(true) => "true".to_string(),
+        BoolLiteral::String(false) => "false".to_string(),
+        BoolLiteral::Int(true) => "1".to_string(),
+        BoolLiteral::Int(false) => "0".to_string(),
+    }
+}
+
 fn int_literal_as_string(int_literal: &IntLiteral) -> String {
-    match int_literal.e_int_literal {
-        EIntLiteral::DecimalInt => format!("{}", int_literal.value),
-        EIntLiteral::BinaryInt => format!("0b{}", int_literal.value),
-        EIntLiteral::OctalInt => format!("0o{}", int_literal.value),
-        EIntLiteral::HexalInt => format!("0x{}", int_literal.value),
+    match int_literal {
+        IntLiteral::SignedDecimalInt(i64) => format!("{i64}"),
+        IntLiteral::UnsignedDecimalInt(u64) => format!("{u64}"),
+        IntLiteral::BinaryInt(u64) => format!("0b{u64:b}"),
+        IntLiteral::OctalInt(u64) => format!("0o{u64:o}"),
+        IntLiteral::HexalInt(u64) => format!("0x{u64:X}"),
     }
 }

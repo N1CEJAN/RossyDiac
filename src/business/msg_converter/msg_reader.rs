@@ -1,10 +1,11 @@
+use std::num::ParseIntError;
 use std::path::Path;
 
 use log::info;
 use nom::branch::alt;
-use nom::bytes::complete::{is_a, tag, take_until1, take_while1};
-use nom::character::complete::{digit1, hex_digit1, line_ending, u8, multispace1, oct_digit1};
-use nom::combinator::{eof, map, opt, verify};
+use nom::bytes::complete::{is_a, tag, take_till1, take_while1};
+use nom::character::complete::{digit1, hex_digit1, line_ending, multispace1, oct_digit1};
+use nom::combinator::{eof, map, map_res, opt, verify};
 use nom::multi::{many0, separated_list0};
 use nom::number::complete::{double, float};
 use nom::sequence::{delimited, preceded, terminated, tuple};
@@ -84,14 +85,21 @@ fn parse_base_type(input: &str) -> IResult<&str, BaseType> {
                 BaseType::Wstring(optional_bound.map(|digits| digits.parse().unwrap()))
             },
         ),
-        map(
-            alt((take_until1(" "), take_until1("["))),
-            |custom_type: &str| {
-                BaseType::Custom(Reference::Relative {
+        map_res(take_till1(|c| c == ' ' || c == '['), |custom_type: &str| {
+            let parts: Vec<&str> = custom_type.split('/').collect();
+            if parts.len() == 2 {
+                Ok(BaseType::Custom(Reference::Absolute {
+                    package: parts[0].to_string(),
+                    file: parts[1].to_string(),
+                }))
+            } else if parts.len() == 1 {
+                Ok(BaseType::Custom(Reference::Relative {
                     file: custom_type.to_string(),
-                })
-            },
-        ),
+                }))
+            } else {
+                Err("Invalid custom type given")
+            }
+        }),
     ))(input)
 }
 
@@ -155,10 +163,7 @@ fn parse_initial_value<'a>(
         ))
     } else {
         match datatype {
-            BaseType::Bool => Box::new(alt((
-                map(tag("true"), |_| InitialValue::Bool(true)),
-                map(tag("false"), |_| InitialValue::Bool(false)),
-            ))),
+            BaseType::Bool => Box::new(map(parse_bool_literal, InitialValue::Bool)),
             BaseType::Byte => Box::new(map(parse_int_literal, InitialValue::Byte)),
             BaseType::Float32 => Box::new(map(float, InitialValue::Float32)),
             BaseType::Float64 => Box::new(map(double, InitialValue::Float64)),
@@ -175,13 +180,22 @@ fn parse_initial_value<'a>(
             // between 0 and 255 (see 7.2.6.2.1)
             // http://design.ros2.org/articles/generated_interfaces_cpp.html#constructors
             // Constructors: [...](note: char fields are considered numeric for C++).
-            BaseType::Char => Box::new(map(u8, InitialValue::Char)),
+            BaseType::Char => Box::new(map(parse_int_literal, InitialValue::Char)),
             // assume defined initial value is correct, due to time constraints
             BaseType::String(_) => Box::new(map(parse_quoted_string, InitialValue::String)),
             BaseType::Wstring(_) => Box::new(map(parse_quoted_string, InitialValue::Wstring)),
             BaseType::Custom(_) => unreachable!(),
         }
     }
+}
+
+fn parse_bool_literal(input: &str) -> IResult<&str, BoolLiteral> {
+    alt((
+        map(tag("true"), |_| BoolLiteral::String(true)),
+        map(tag("false"), |_| BoolLiteral::String(false)),
+        map(tag("1"), |_| BoolLiteral::Int(false)),
+        map(tag("0"), |_| BoolLiteral::Int(true)),
+    ))(input)
 }
 
 fn parse_int_literal(input: &str) -> IResult<&str, IntLiteral> {
@@ -194,46 +208,51 @@ fn parse_int_literal(input: &str) -> IResult<&str, IntLiteral> {
 }
 
 fn dec_int_parser(input: &str) -> IResult<&str, IntLiteral> {
-    map(
+    map_res(
         tuple((opt(alt((tag("-"), tag("+")))), digit1)),
-        |(optional_sign, unsigned_integer): (Option<&str>, &str)| IntLiteral {
-            value: if let Some(sign) = optional_sign {
-                sign.to_string() + unsigned_integer
+        |(sign, str): (Option<&str>, &str)| {
+            Ok::<IntLiteral, ParseIntError>(if let Some(sign) = sign {
+                let to_parse = format!("{sign}{str}");
+                let i64 = i64::from_str_radix(&to_parse, 10)?;
+                IntLiteral::SignedDecimalInt(i64)
             } else {
-                unsigned_integer.to_string()
-            },
-            e_int_literal: EIntLiteral::DecimalInt,
-        },
-    )(input)
-}
-
-fn bin_int_parser(input: &str) -> IResult<&str, IntLiteral> {
-    map(
-        preceded(alt((tag("0b"), tag("0B"))), bin_digit),
-        |str: &str| IntLiteral {
-            value: str.to_string(),
-            e_int_literal: EIntLiteral::BinaryInt,
-        },
-    )(input)
-}
-
-fn oct_int_parser(input: &str) -> IResult<&str, IntLiteral> {
-    map(
-        preceded(alt((tag("0o"), tag("0O"))), oct_digit1),
-        |str: &str| IntLiteral {
-            value: str.to_string(),
-            e_int_literal: EIntLiteral::OctalInt,
+                let u64 = u64::from_str_radix(&str, 10)?;
+                IntLiteral::UnsignedDecimalInt(u64)
+            })
         },
     )(input)
 }
 
 fn hex_int_parser(input: &str) -> IResult<&str, IntLiteral> {
-    map(
-        preceded(alt((tag("0x"), tag("0X"))), hex_digit1),
-        |str: &str| IntLiteral {
-            value: str.to_string(),
-            e_int_literal: EIntLiteral::HexalInt,
-        },
+    preceded(
+        alt((tag("0x"), tag("0X"))),
+        map_res(hex_digit1, |str: &str| {
+            let cleaned_str = str.replace("_", "");
+            let u64 = u64::from_str_radix(&cleaned_str, 16)?;
+            Ok::<IntLiteral, ParseIntError>(IntLiteral::HexalInt(u64))
+        }),
+    )(input)
+}
+
+fn oct_int_parser(input: &str) -> IResult<&str, IntLiteral> {
+    preceded(
+        alt((tag("0o"), tag("0O"))),
+        map_res(oct_digit1, |str: &str| {
+            let cleaned_str = str.replace("_", "");
+            let u64 = u64::from_str_radix(&cleaned_str, 8)?;
+            Ok::<IntLiteral, ParseIntError>(IntLiteral::OctalInt(u64))
+        }),
+    )(input)
+}
+
+fn bin_int_parser(input: &str) -> IResult<&str, IntLiteral> {
+    preceded(
+        alt((tag("0b"), tag("0B"))),
+        map_res(bin_digit, |str: &str| {
+            let cleaned_str = str.replace("_", "");
+            let u64 = u64::from_str_radix(&cleaned_str, 2)?;
+            Ok::<IntLiteral, ParseIntError>(IntLiteral::BinaryInt(u64))
+        }),
     )(input)
 }
 

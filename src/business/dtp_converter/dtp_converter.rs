@@ -1,6 +1,6 @@
-use log::debug;
-use crate::business::error::{Error, Result};
+use crate::business::error::Result;
 use crate::core::{dtp, msg};
+use log::debug;
 
 const WORD_SUFFIX: &'static str = "_word";
 const DWORD_SUFFIX: &'static str = "_dword";
@@ -57,20 +57,12 @@ fn convert_var_declaration(
         return Ok(fields);
     }
 
-    match var_declaration.base_type() {
-        dtp::BaseType::TIME => todo!("time conversion"),
-        dtp::BaseType::DATE => todo!("date conversion"),
-        dtp::BaseType::TIME_OF_DAY | dtp::BaseType::TOD => todo!("time_of_day conversion"),
-        dtp::BaseType::DATE_AND_TIME | dtp::BaseType::DT => todo!("date_and_time conversion"),
-        _ => {
-            fields.push(msg::Field::new(
-                &convert_to_msg_base_type(structured_type, var_declaration)?,
-                &convert_to_msg_constraint(structured_type, var_declaration)?,
-                &convert_to_field_name(var_declaration)?,
-                &convert_to_msg_initial_value(var_declaration)?,
-            ));
-        }
-    }
+    fields.push(msg::Field::new(
+        &convert_to_msg_base_type(structured_type, var_declaration)?,
+        &convert_to_msg_constraint(structured_type, var_declaration)?,
+        &convert_to_field_name(var_declaration)?,
+        &convert_to_msg_initial_value(var_declaration)?,
+    ));
     Ok(fields)
 }
 
@@ -102,7 +94,6 @@ fn convert_to_msg_base_type(
             msg::BaseType::Wstring(extract_string_bound(structured_type, var_declaration)?)
         }
         dtp::BaseType::Custom(value) => msg::BaseType::Custom(convert_reference(value)?),
-        _ => return Err("Direct BaseType conversion not possible".into()),
     };
     Ok(result)
 }
@@ -172,7 +163,7 @@ fn convert_to_msg_initial_value(var_declaration: &dtp::VarDeclaration) -> Result
 
 fn convert_initial_value_directly2(initial_value: &dtp::InitialValue) -> Result<msg::InitialValue> {
     let result = match initial_value {
-        dtp::InitialValue::BOOL(v) => msg::InitialValue::Bool(*v),
+        dtp::InitialValue::BOOL(v) => msg::InitialValue::Bool(convert_bool_literal(v)),
         dtp::InitialValue::SINT(v) => msg::InitialValue::Int8(convert_int_literal(v)),
         dtp::InitialValue::INT(v) => msg::InitialValue::Int16(convert_int_literal(v)),
         dtp::InitialValue::DINT(v) => msg::InitialValue::Int32(convert_int_literal(v)),
@@ -187,7 +178,7 @@ fn convert_initial_value_directly2(initial_value: &dtp::InitialValue) -> Result<
         dtp::InitialValue::LWORD(v) => msg::InitialValue::Uint64(convert_int_literal(v)),
         dtp::InitialValue::REAL(v) => msg::InitialValue::Float32(*v),
         dtp::InitialValue::LREAL(v) => msg::InitialValue::Float64(*v),
-        dtp::InitialValue::CHAR(v) => msg::InitialValue::Char(*v),
+        dtp::InitialValue::CHAR(v) => msg::InitialValue::Char(convert_char_literal(v)),
         dtp::InitialValue::STRING(v) => msg::InitialValue::String(v.clone()),
         dtp::InitialValue::WSTRING(v) => msg::InitialValue::Wstring(v.clone()),
         dtp::InitialValue::Array(v) => v
@@ -195,24 +186,32 @@ fn convert_initial_value_directly2(initial_value: &dtp::InitialValue) -> Result<
             .map(convert_initial_value_directly2)
             .collect::<Result<Vec<_>>>()
             .map(msg::InitialValue::Array)?,
-        _ => return Err(format!("No direct conversion found for {initial_value:?}").into()),
     };
     Ok(result)
 }
 
-fn convert_int_literal(initial_value: &dtp::IntLiteral) -> msg::IntLiteral {
-    let e_int_literal = match &initial_value.e_int_literal {
-        dtp::EIntLiteral::DecimalInt => msg::EIntLiteral::DecimalInt,
-        dtp::EIntLiteral::BinaryInt => msg::EIntLiteral::BinaryInt,
-        dtp::EIntLiteral::OctalInt => msg::EIntLiteral::OctalInt,
-        dtp::EIntLiteral::HexalInt => msg::EIntLiteral::HexalInt,
-    };
-    msg::IntLiteral {
-        // Entscheidung: Die Underscores erhalte ich nicht,
-        // weil es verschwendet Konvertierungsaufwand ist,
-        // nur für ein sauber cross-transpiling.
-        value: initial_value.value.replace("_", ""),
-        e_int_literal,
+fn convert_char_literal(dtp_char_literal: &dtp::CharLiteral) -> msg::IntLiteral {
+    match dtp_char_literal {
+        dtp::CharLiteral::Value(char) | dtp::CharLiteral::Hex(char) => {
+            msg::IntLiteral::HexalInt(*char as u64)
+        }
+    }
+}
+
+fn convert_bool_literal(dtp_bool_literal: &dtp::BoolLiteral) -> msg::BoolLiteral {
+    match dtp_bool_literal {
+        dtp::BoolLiteral::String(bool) => msg::BoolLiteral::String(*bool),
+        dtp::BoolLiteral::Int(bool) => msg::BoolLiteral::Int(*bool),
+    }
+}
+
+fn convert_int_literal(dtp_int_literal: &dtp::IntLiteral) -> msg::IntLiteral {
+    match dtp_int_literal {
+        dtp::IntLiteral::SignedDecimalInt(i64) => msg::IntLiteral::SignedDecimalInt(*i64),
+        dtp::IntLiteral::UnsignedDecimalInt(u64) => msg::IntLiteral::UnsignedDecimalInt(*u64),
+        dtp::IntLiteral::BinaryInt(u64) => msg::IntLiteral::BinaryInt(*u64),
+        dtp::IntLiteral::OctalInt(u64) => msg::IntLiteral::OctalInt(*u64),
+        dtp::IntLiteral::HexalInt(u64) => msg::IntLiteral::HexalInt(*u64),
     }
 }
 
@@ -249,8 +248,10 @@ fn get_var_declaration_by_name<'a>(
 }
 
 fn convert_bound_var_declaration(bound_var_declaration: &dtp::VarDeclaration) -> Result<usize> {
-    if let Some(dtp::InitialValue::ULINT(int_literal)) = bound_var_declaration.initial_value() {
-        Ok(int_literal.value.parse().map_err(Error::custom)?)
+    if let Some(dtp::InitialValue::ULINT(dtp::IntLiteral::UnsignedDecimalInt(bound))) =
+        bound_var_declaration.initial_value()
+    {
+        Ok(*bound as usize)
     } else {
         Err(format!(
             "Invalid InitialValue of helper VarDeclaration {}",

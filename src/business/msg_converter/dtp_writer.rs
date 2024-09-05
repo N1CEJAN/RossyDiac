@@ -113,22 +113,13 @@ fn base_type_to_string(base_type: &BaseType) -> String {
         BaseType::CHAR => "CHAR".to_string(),
         BaseType::STRING => "STRING".to_string(),
         BaseType::WSTRING => "WSTRING".to_string(),
-        BaseType::TIME => "TIME".to_string(),
-        BaseType::DATE => "DATE".to_string(),
-        BaseType::TIME_OF_DAY => "TIME_OF_DAY".to_string(),
-        BaseType::TOD => "TOD".to_string(),
-        BaseType::DATE_AND_TIME => "DATE_AND_TIME".to_string(),
-        BaseType::DT => "DT".to_string(),
         BaseType::Custom(type_name) => type_name.clone(),
     }
 }
 
 fn initial_value_to_string(initial_value: &InitialValue) -> String {
     match initial_value {
-        InitialValue::BOOL(bool) => match *bool {
-            true => "TRUE".to_string(),
-            false => "FALSE".to_string(),
-        },
+        InitialValue::BOOL(bool) => bool_literal_as_string(bool),
         InitialValue::SINT(int_literal)
         | InitialValue::INT(int_literal)
         | InitialValue::DINT(int_literal)
@@ -143,47 +134,37 @@ fn initial_value_to_string(initial_value: &InitialValue) -> String {
         | InitialValue::LWORD(int_literal) => int_literal_as_string(int_literal),
         InitialValue::REAL(value) => value.to_string(),
         InitialValue::LREAL(value) => value.to_string(),
-        InitialValue::CHAR(value) => format!("'${:02X}'", value),
+        InitialValue::CHAR(value) => char_literal_as_string(value),
         InitialValue::STRING(value) => format!("'{value}'"),
         InitialValue::WSTRING(value) => format!("&quot;{value}&quot;"),
-        InitialValue::TIME(value) => value.to_string(),
-        InitialValue::DATE(value) => value.to_string(),
-        InitialValue::TIME_OF_DAY(value) => value.to_string(),
-        InitialValue::TOD(value) => value.to_string(),
-        InitialValue::DATE_AND_TIME(value) => value.to_string(),
-        InitialValue::DT(value) => value.to_string(),
         InitialValue::Array(values) => array_of_initial_values_as_string(values),
     }
 }
 
-fn int_literal_as_string(int_literal: &IntLiteral) -> String {
-    let mut string = String::new();
-    if let Some(type_name) = int_literal.int_type.as_ref() {
-        string.push_str(match type_name {
-            IntTypeName::SINT => "SINT",
-            IntTypeName::INT => "INT",
-            IntTypeName::DINT => "DINT",
-            IntTypeName::LINT => "LINT",
-            IntTypeName::USINT => "USINT",
-            IntTypeName::UINT => "UINT",
-            IntTypeName::UDINT => "UDINT",
-            IntTypeName::ULINT => "ULINT",
-            IntTypeName::BYTE => "BYTE",
-            IntTypeName::WORD => "WORD",
-            IntTypeName::DWORD => "DWORD",
-            IntTypeName::LWORD => "LWORD",
-        });
-        string.push_str("#");
+fn bool_literal_as_string(bool_literal: &BoolLiteral) -> String {
+    match bool_literal {
+        BoolLiteral::String(true) => "TRUE".to_string(),
+        BoolLiteral::String(false) => "FALSE".to_string(),
+        BoolLiteral::Int(true) => "1".to_string(),
+        BoolLiteral::Int(false) => "0".to_string(),
     }
-    string.push_str(
-        &(match &int_literal.e_int_literal {
-            EIntLiteral::DecimalInt => format!("{}", int_literal.value),
-            EIntLiteral::BinaryInt => format!("2#{}", int_literal.value),
-            EIntLiteral::OctalInt => format!("8#{}", int_literal.value),
-            EIntLiteral::HexalInt => format!("16#{}", int_literal.value),
-        }),
-    );
-    string
+}
+
+fn char_literal_as_string(char_literal: &CharLiteral) -> String {
+    match char_literal {
+        CharLiteral::Value(char) => format!("'{char}'"),
+        CharLiteral::Hex(char) => format!("'${:02X}'", *char as u8)
+    }
+}
+
+fn int_literal_as_string(int_literal: &IntLiteral) -> String {
+    match int_literal {
+        IntLiteral::SignedDecimalInt(i64) => format!("{i64}"),
+        IntLiteral::UnsignedDecimalInt(u64) => format!("{u64}"),
+        IntLiteral::BinaryInt(u64) => format!("2#{u64:b}"),
+        IntLiteral::OctalInt(u64) => format!("8#{u64:o}"),
+        IntLiteral::HexalInt(u64) => format!("16#{u64:X}"),
+    }
 }
 
 fn array_of_initial_values_as_string(values: &[InitialValue]) -> String {
