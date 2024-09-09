@@ -1,7 +1,5 @@
 bool a_bool
 byte a_byte
-float32 a_float32
-float64 a_float64
 int8 an_int8
 int16 an_int16
 int32 an_int32
@@ -10,6 +8,10 @@ uint8 a_uint8
 uint16 a_uint16
 uint32 a_uint32
 uint64 a_uint64
+float32 a_float32
+float64 a_float64
 char a_char
 string a_string
+string<=2 a_bound_string
 wstring a_wstring
+wstring<=2 a_bound_wstring

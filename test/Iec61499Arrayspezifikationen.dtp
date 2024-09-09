@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="Iec61499Arrayspezifikationen">
+	<Identification>
+	</Identification>
+	<VersionInfo Version="1.0" Author="jan" Date="2024-09-03">
+	</VersionInfo>
+	<CompilerInfo>
+	</CompilerInfo>
+	<StructuredType>
+		<VarDeclaration Name="static_array_with_capacity" Type="BOOL" ArraySize="3"/>
+		<VarDeclaration Name="static_array_with_indexation" Type="BOOL" ArraySize="-1..1"/>
+		<VarDeclaration Name="dynamic_array" Type="BOOL" ArraySize="*"/>
+	</StructuredType>
+</DataType>

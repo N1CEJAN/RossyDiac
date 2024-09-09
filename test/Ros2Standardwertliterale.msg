@@ -1,0 +1,12 @@
+bool bool_string true
+bool bool_int 1
+int8 int_dec0 1
+int8 int_dec1 01
+int8 int_hex 0x1
+int8 int_oct 0o1
+int8 int_bin 0b1
+char char 0x41
+string string_empty ''
+string string_escape '\''
+string string_empty ""
+string string_escape "\""
