@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="ROS2_conversiontests_msg_Ros2PrimitiveDatentypen">
+  <StructuredType>
+    <VarDeclaration Name="a_bool" Type="BOOL" />
+    <VarDeclaration Name="a_byte" Type="BYTE" />
+    <VarDeclaration Name="an_int8" Type="SINT" />
+    <VarDeclaration Name="an_int16" Type="INT" />
+    <VarDeclaration Name="an_int32" Type="DINT" />
+    <VarDeclaration Name="an_int64" Type="LINT" />
+    <VarDeclaration Name="a_uint8" Type="USINT" />
+    <VarDeclaration Name="a_uint16" Type="UINT" />
+    <VarDeclaration Name="a_uint32" Type="UDINT" />
+    <VarDeclaration Name="a_uint64" Type="ULINT" />
+    <VarDeclaration Name="a_float32" Type="REAL" />
+    <VarDeclaration Name="a_float64" Type="LREAL" />
+    <VarDeclaration Name="a_char" Type="CHAR" />
+    <VarDeclaration Name="a_string" Type="STRING" />
+    <VarDeclaration Name="a_bound_string" Type="STRING" />
+    <VarDeclaration Name="a_bound_string_string_bound" Type="ULINT" InitialValue="2" />
+    <VarDeclaration Name="a_wstring" Type="WSTRING" />
+    <VarDeclaration Name="a_bound_wstring" Type="WSTRING" />
+    <VarDeclaration Name="a_bound_wstring_string_bound" Type="ULINT" InitialValue="2" />
+  </StructuredType>
+</DataType>
