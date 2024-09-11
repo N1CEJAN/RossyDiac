@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="ROS2_conversiontests_msg_Ros2DynamischesArray1">
+  <StructuredType>
+    <VarDeclaration Name="dynamic_array" Type="SINT" ArraySize="*" />
+  </StructuredType>
+</DataType>
