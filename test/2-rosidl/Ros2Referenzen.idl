@@ -1,0 +1,19 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from conversion_tests/Ros2Referenzen.msg
+// generated code does not contain a copyright notice
+
+#include "conversion_tests/msg/Ros2PrimitiverDatentyp.idl"
+
+module conversion_tests {
+  module msg {
+    struct Ros2Referenzen {
+      conversion_tests::msg::Ros2PrimitiverDatentyp absolute_reference;
+
+      sequence<conversion_tests::msg::Ros2PrimitiverDatentyp> array_of_absolute_references;
+
+      conversion_tests::msg::Ros2PrimitiverDatentyp relative_reference;
+
+      sequence<conversion_tests::msg::Ros2PrimitiverDatentyp> array_of_relative_references;
+    };
+  };
+};

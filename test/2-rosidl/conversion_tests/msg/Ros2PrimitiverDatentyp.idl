@@ -1,0 +1,12 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from conversion_tests/Ros2PrimitiverDatentyp.msg
+// generated code does not contain a copyright notice
+
+
+module conversion_tests {
+  module msg {
+    struct Ros2PrimitiverDatentyp {
+      boolean a_bool;
+    };
+  };
+};

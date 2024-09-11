@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="ROS2_conversiontests_msg_Ros2PrimitiverDatentyp">
+  <StructuredType>
+    <VarDeclaration Name="a_bool" Type="BOOL" />
+  </StructuredType>
+</DataType>
