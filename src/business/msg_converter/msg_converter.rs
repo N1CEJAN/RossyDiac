@@ -36,7 +36,7 @@ fn convert_field(package_name: &str, field: &msg::Field) -> Result<Vec<dtp::Stru
     let array_size = convert_to_var_optional_array_size(field)?;
     let initial_value = convert_to_var_optional_initial_value(field)?;
     structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(
-        dtp::VarDeclaration::new(&var_name, &base_type, &array_size, &initial_value, &None),
+        dtp::VarDeclaration::new(&var_name, &base_type, &array_size, &initial_value, &None, &vec![]),
     ));
 
     if let msg::BaseType::String(Some(constraint)) | msg::BaseType::Wstring(Some(constraint)) =
@@ -51,6 +51,7 @@ fn convert_field(package_name: &str, field: &msg::Field) -> Result<Vec<dtp::Stru
                     dtp::IntLiteral::UnsignedDecimalInt(*constraint as u64),
                 )),
                 &None,
+                &vec![]
             ),
         ));
     }
@@ -65,6 +66,7 @@ fn convert_field(package_name: &str, field: &msg::Field) -> Result<Vec<dtp::Stru
                     dtp::IntLiteral::UnsignedDecimalInt(*bound as u64),
                 )),
                 &None,
+                &vec![]
             ),
         ));
     };

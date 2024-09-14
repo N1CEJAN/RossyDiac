@@ -30,7 +30,12 @@ fn field_as_string(field: &Field) -> String {
     result.push_str(" ");
     result.push_str(field.name());
     result.push_str(&field_type_as_string(field.field_type()));
+    result.push_str(&comment_as_string(field.comment()));
     result
+}
+
+fn comment_as_string(comment: Option<&String>) -> String {
+    comment.map_or_else(String::new, |comment| format!("// {comment}"))
 }
 
 fn field_type_as_string(field_type: &FieldType) -> String {

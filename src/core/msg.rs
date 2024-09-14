@@ -25,6 +25,7 @@ pub struct Field {
     constraint: Option<Constraint>,
     name: String,
     field_type: FieldType,
+    comment: Option<String>,
 }
 
 impl Field {
@@ -33,12 +34,14 @@ impl Field {
         constraint: &Option<Constraint>,
         name: &str,
         field_type: &FieldType,
+        comment: &Option<String>,
     ) -> Self {
         Self {
             base_type: base_type.clone(),
             constraint: constraint.clone(),
             name: name.to_string(),
             field_type: field_type.clone(),
+            comment: comment.clone()
         }
     }
     pub fn base_type(&self) -> &BaseType {
@@ -52,6 +55,9 @@ impl Field {
     }
     pub fn field_type(&self) -> &FieldType {
         &self.field_type
+    }
+    pub fn comment(&self) -> Option<&String> {
+        self.comment.as_ref()
     }
 }
 

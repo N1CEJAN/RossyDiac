@@ -47,10 +47,17 @@ fn parse_field(input: &str) -> IResult<&str, Field> {
     ))(input)?;
 
     let (input, field_type) = parse_field_type(&base_type, &optional_constraint)(input)?;
+    let (input, comment) = opt(preceded(multispace1, parse_line_comment))(input)?;
 
     Ok((
         input,
-        Field::new(&base_type, &optional_constraint, &name, &field_type),
+        Field::new(
+            &base_type,
+            &optional_constraint,
+            &name,
+            &field_type,
+            &comment,
+        ),
     ))
 }
 
@@ -131,21 +138,29 @@ fn parse_field_name(input: &str) -> IResult<&str, &str> {
 }
 
 fn parse_field_type<'a>(
-    base_type: &'a BaseType,
-    constraint: &'a Option<Constraint>,
-) -> impl FnMut(&str) -> IResult<&str, FieldType> + 'a {
-    move |input| {
-        if let (input, Some(tag)) = opt(alt((tag("="), tag(" "))))(input)? {
-            let (input, initial_value) = parse_initial_value(&base_type, &constraint)(input)?;
-            let field_type = match tag {
+    base_type: &BaseType,
+    constraint: &Option<Constraint>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, FieldType> {
+    map(
+        opt(tuple((
+            alt((tag("="), tag(" "))),
+            parse_initial_value(base_type, constraint),
+        ))),
+        |option| match option {
+            Some((tag, initial_value)) => match tag {
                 "=" => FieldType::Constant(initial_value),
                 _ => FieldType::Variable(Some(initial_value)),
-            };
-            Ok((input, field_type))
-        } else {
-            Ok((input, FieldType::Variable(None)))
-        }
-    }
+            },
+            _ => FieldType::Variable(None),
+        },
+    )
+}
+
+fn parse_line_comment(input: &str) -> IResult<&str, String> {
+    map(
+        preceded(tag("//"), take_until_parser(eol_or_eof)),
+        |str: &str| str.trim().to_string(),
+    )(input)
 }
 
 fn parse_initial_value<'a>(
@@ -283,4 +298,21 @@ fn parse_inner_string(quote: char) -> impl FnMut(&str) -> IResult<&str, String> 
 
 fn bin_digit(input: &str) -> IResult<&str, &str> {
     is_a("01")(input)
+}
+
+fn take_until_parser<P>(end_parser: P) -> impl Fn(&str) -> IResult<&str, &str>
+where
+    P: Fn(&str) -> IResult<&str, &str>,
+{
+    move |input: &str| {
+        let mut i = 0;
+        while i < input.len() {
+            let slice = &input[i..];
+            if end_parser(slice).is_ok() {
+                return Ok((&input[i..], &input[0..i]));
+            }
+            i += 1;
+        }
+        Ok(("", input))
+    }
 }

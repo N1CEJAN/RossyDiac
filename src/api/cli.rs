@@ -40,6 +40,18 @@ enum Command {
         #[arg(short = 'p', long = "package-name")]
         package_name: String,
     },
+    /// Print msg file data structure
+    PrintMsg {
+        /// The file to read
+        #[arg(short = 'f', long = "file")]
+        path_to_msg_file: String,
+    },
+    /// Print dtp file data structure
+    PrintDtp {
+        /// The file to read
+        #[arg(short = 'f', long = "file")]
+        path_to_dtp_file: String,
+    },
 }
 
 pub fn run() {
@@ -65,6 +77,8 @@ pub fn run() {
             &path_to_destination_directory,
             &package_name,
         ),
+        Command::PrintMsg { path_to_msg_file } => print_msg(&path_to_msg_file),
+        Command::PrintDtp { path_to_dtp_file } => print_dtp(&path_to_dtp_file),
     };
 
     if let Err(error) = result {

@@ -94,6 +94,7 @@ pub struct VarDeclaration {
     array_size: Option<ArraySize>,
     initial_value: Option<InitialValue>,
     comment: Option<String>,
+    attributes: Vec<Attribute>
 }
 
 impl VarDeclaration {
@@ -103,6 +104,7 @@ impl VarDeclaration {
         array_size: &Option<ArraySize>,
         initial_value: &Option<InitialValue>,
         comment: &Option<String>,
+        attributes: &Vec<Attribute>
     ) -> Self {
         Self {
             name: name.to_string(),
@@ -110,6 +112,7 @@ impl VarDeclaration {
             array_size: array_size.clone(),
             initial_value: initial_value.clone(),
             comment: comment.clone(),
+            attributes: attributes.clone(),
         }
     }
     pub fn name(&self) -> &str {
@@ -127,6 +130,17 @@ impl VarDeclaration {
     pub fn comment(&self) -> &Option<String> {
         &self.comment
     }
+    pub fn attributes(&self) -> &Vec<Attribute> {
+        &self.attributes
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Attribute {
+    pub name: String,
+    pub base_type: BaseType,
+    pub value: InitialValue,
+    pub comment: Option<String>
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -191,11 +205,13 @@ pub enum InitialValue {
 pub const XML_TAG_DATA_TYPE: &str = "DataType";
 pub const XML_TAG_STRUCTURED_TYPE: &str = "StructuredType";
 pub const XML_TAG_VAR_DECLARATION: &str = "VarDeclaration";
+pub const XML_TAG_ATTRIBUTE: &str = "Attribute";
 
 pub const XML_ATTRIBUTE_NAME: &str = "Name";
 pub const XML_ATTRIBUTE_TYPE: &str = "Type";
 pub const XML_ATTRIBUTE_ARRAY_SIZE: &str = "ArraySize";
 pub const XML_ATTRIBUTE_INITIAL_VALUE: &str = "InitialValue";
+pub const XML_ATTRIBUTE_VALUE: &str = "Value";
 pub const XML_ATTRIBUTE_COMMENT: &str = "Comment";
 
 #[derive(Clone, Debug)]

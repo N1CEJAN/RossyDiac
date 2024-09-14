@@ -62,6 +62,7 @@ fn convert_var_declaration(
         &convert_to_msg_constraint(structured_type, var_declaration)?,
         &convert_to_field_name(var_declaration)?,
         &convert_to_msg_initial_value(var_declaration)?,
+        &None
     ));
     Ok(fields)
 }

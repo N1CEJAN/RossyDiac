@@ -137,13 +137,55 @@ fn parse_var_declaration(element: &Element) -> Result<VarDeclaration> {
         .attributes
         .get_key_value(XML_ATTRIBUTE_COMMENT)
         .map(|key_value| key_value.1.clone());
+    let attributes = parse_attributes(element)?;
+
     Ok(VarDeclaration::new(
         &name,
         &base_type,
         &array_size,
         &initial_value,
         &comment,
+        &attributes,
     ))
+}
+
+fn parse_attributes(element: &Element) -> Result<Vec<Attribute>> {
+    get_filtered_children(element, |child| child.name == XML_TAG_ATTRIBUTE)
+        .into_iter()
+        .map(parse_attribute)
+        .collect()
+}
+
+fn parse_attribute(element: &Element) -> Result<Attribute> {
+    let name = element
+        .attributes
+        .get_key_value(XML_ATTRIBUTE_NAME)
+        .map(|key_value| key_value.1.clone())
+        .ok_or("No \"Name\" attribute found on \"Attribute\" element")?;
+    let base_type = element
+        .attributes
+        .get_key_value(XML_ATTRIBUTE_TYPE)
+        .map(|key_value| key_value.1.clone())
+        .map(|value| parse_base_type(value.as_str()))
+        .ok_or("No \"Type\" attribute defined for \"Attribute\" element")?;
+    let value = element
+        .attributes
+        .get_key_value(XML_ATTRIBUTE_VALUE)
+        .map(|key_value| key_value.1.clone())
+        .map(|value| parse_initial_value(&base_type, &None)(value.as_str()))
+        .transpose()?
+        .ok_or("No \"Value\" attribute defined for \"Attribute\" element")?;
+    let comment = element
+        .attributes
+        .get_key_value(XML_ATTRIBUTE_COMMENT)
+        .map(|key_value| key_value.1.clone());
+
+    Ok(Attribute {
+        name,
+        base_type,
+        value,
+        comment,
+    })
 }
 
 fn parse_base_type(string: &str) -> BaseType {
@@ -245,8 +287,11 @@ fn parse_initial_value<'a>(
     }
 }
 
-fn get_filtered_children(parent: &Element, x: fn(&&Element) -> bool) -> Vec<&Element> {
-    get_children(parent).into_iter().filter(x).collect()
+fn get_filtered_children(parent: &Element, filter_fn: fn(&Element) -> bool) -> Vec<&Element> {
+    get_children(parent)
+        .into_iter()
+        .filter(|child| filter_fn(child))
+        .collect()
 }
 
 fn get_children(parent: &Element) -> Vec<&Element> {

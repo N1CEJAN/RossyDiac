@@ -90,7 +90,37 @@ fn create_var_declaration_element(var_declaration: &VarDeclaration) -> XMLNode {
             .attributes
             .insert(XML_ATTRIBUTE_COMMENT.to_string(), comment.clone());
     }
+    var_declaration_element.children.append(
+        &mut var_declaration
+            .attributes()
+            .iter()
+            .map(create_attribute_element)
+            .collect(),
+    );
     XMLNode::Element(var_declaration_element)
+}
+
+fn create_attribute_element(attribute: &Attribute) -> XMLNode {
+    let mut attribute_element = Element::new(XML_TAG_ATTRIBUTE);
+    attribute_element.attributes.insert(
+        XML_ATTRIBUTE_NAME.to_string(),
+        attribute.name.to_string()
+    );
+    attribute_element.attributes.insert(
+        XML_ATTRIBUTE_TYPE.to_string(),
+        base_type_to_string(&attribute.base_type),
+    );
+    attribute_element.attributes.insert(
+        XML_ATTRIBUTE_VALUE.to_string(),
+        initial_value_to_string(&attribute.value),
+    );
+    if let Some(comment) = &attribute.comment {
+        attribute_element.attributes.insert(
+            XML_ATTRIBUTE_COMMENT.to_string(),
+            comment.clone()
+        );
+    }
+    XMLNode::Element(attribute_element)
 }
 
 fn base_type_to_string(base_type: &BaseType) -> String {
