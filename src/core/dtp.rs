@@ -179,7 +179,7 @@ pub enum Capacity {
     Shifted(i64, i64),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum InitialValue {
     BOOL(BoolLiteral),
     SINT(IntLiteral),
@@ -214,13 +214,13 @@ pub const XML_ATTRIBUTE_INITIAL_VALUE: &str = "InitialValue";
 pub const XML_ATTRIBUTE_VALUE: &str = "Value";
 pub const XML_ATTRIBUTE_COMMENT: &str = "Comment";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BoolLiteral {
     String(bool),
     Int(bool),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum IntLiteral {
     SignedDecimalInt(i64),
     UnsignedDecimalInt(u64),
@@ -229,7 +229,7 @@ pub enum IntLiteral {
     HexalInt(u64),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CharLiteral {
     Value(char),
     Hex(char),
