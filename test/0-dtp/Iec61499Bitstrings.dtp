@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="Iec61499Bitstrings">
+	<StructuredType>
+		<VarDeclaration Name="a_byte" Type="BYTE"/>
+		<VarDeclaration Name="a_word" Type="WORD"/>
+		<VarDeclaration Name="a_dword" Type="DWORD"/>
+		<VarDeclaration Name="a_lword" Type="LWORD"/>
+	</StructuredType>
+</DataType>
