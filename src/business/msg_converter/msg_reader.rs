@@ -5,7 +5,7 @@ use log::{debug, info};
 use nom::branch::alt;
 use nom::bytes::complete::{is_a, tag, take_till1, take_while1};
 use nom::character::complete::{digit1, hex_digit1, line_ending, multispace1, oct_digit1};
-use nom::combinator::{eof, map, map_res, opt, verify};
+use nom::combinator::{eof, fail, map, map_res, opt, verify};
 use nom::multi::{many0, separated_list0};
 use nom::number::complete::{double, float};
 use nom::sequence::{delimited, preceded, terminated, tuple};
@@ -46,12 +46,8 @@ fn parse_field(input: &str) -> IResult<&str, Field> {
         preceded(multispace1, parse_field_name),
     ))(input)?;
 
-    debug!("1 {base_type:?}, {optional_constraint:?}, {name:?}");
-    
     let (input, field_type) = parse_field_type(&base_type, &optional_constraint)(input)?;
     let (input, comment) = opt(preceded(multispace1, parse_line_comment))(input)?;
-
-    debug!("2 {field_type:?}, {comment:?}");
 
     Ok((
         input,
@@ -151,7 +147,6 @@ fn parse_field_type<'a>(
             parse_initial_value(base_type, constraint),
         ))),
         |option| {
-            debug!("4 {option:?}");
             match option {
                 Some((tag, initial_value)) => match tag {
                     "=" => FieldType::Constant(initial_value),
@@ -175,7 +170,6 @@ fn parse_initial_value<'a>(
     optional_constraint: &Option<Constraint>,
 ) -> Box<dyn FnMut(&'a str) -> IResult<&str, InitialValue> + 'a> {
     if optional_constraint.is_some() {
-        debug!("a");
         Box::new(map(
             delimited(
                 tag("["),
@@ -185,7 +179,6 @@ fn parse_initial_value<'a>(
             InitialValue::Array,
         ))
     } else {
-        debug!("datatype: {:?}", datatype);
         match datatype {
             BaseType::Bool => Box::new(map(parse_bool_literal, InitialValue::Bool)),
             BaseType::Byte => Box::new(map(parse_int_literal, InitialValue::Byte)),
@@ -208,18 +201,17 @@ fn parse_initial_value<'a>(
             // assume defined initial value is correct, due to time constraints
             BaseType::String(_) => Box::new(map(parse_quoted_string, InitialValue::String)),
             BaseType::Wstring(_) => Box::new(map(parse_quoted_string, InitialValue::Wstring)),
-            BaseType::Custom(_) => unreachable!(),
+            BaseType::Custom(_) => Box::new(fail),
         }
     }
 }
 
 fn parse_bool_literal(input: &str) -> IResult<&str, BoolLiteral> {
-    debug!("{:?}", input);
     alt((
         map(tag("true"), |_| BoolLiteral::String(true)),
         map(tag("false"), |_| BoolLiteral::String(false)),
-        map(tag("1"), |_| BoolLiteral::Int(false)),
-        map(tag("0"), |_| BoolLiteral::Int(true)),
+        map(tag("1"), |_| BoolLiteral::Int(true)),
+        map(tag("0"), |_| BoolLiteral::Int(false)),
     ))(input)
 }
 
