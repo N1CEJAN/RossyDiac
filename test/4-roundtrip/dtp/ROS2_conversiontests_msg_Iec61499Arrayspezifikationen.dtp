@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="ROS2_conversiontests_msg_Iec61499Arrayspezifikationen">
+    <StructuredType>
+        <VarDeclaration Name="static_array_with_capacity" Type="BOOL" ArraySize="3"/>
+        <VarDeclaration Name="static_array_with_indexation" Type="BOOL" ArraySize="-1..1"/>
+    </StructuredType>
+</DataType>
