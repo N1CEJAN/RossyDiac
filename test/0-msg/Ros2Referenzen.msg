@@ -1,4 +1,4 @@
-conversion_tests/Ros2PrimitiverDatentyp absolute_reference
-conversion_tests/Ros2PrimitiverDatentyp[] array_of_absolute_references
-Ros2PrimitiverDatentyp relative_reference
-Ros2PrimitiverDatentyp[] array_of_relative_references
+conversion_tests/Ros2PrimitiveDatentypen absolute_reference
+conversion_tests/Ros2PrimitiveDatentypen[] absolute_references
+Ros2PrimitiveDatentypen relative_reference
+Ros2PrimitiveDatentypen[] relative_references
