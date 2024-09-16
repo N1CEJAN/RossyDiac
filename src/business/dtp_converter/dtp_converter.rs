@@ -68,7 +68,7 @@ fn convert_to_msg_comment(var_declaration: &dtp::VarDeclaration) -> Option<Strin
     if let Some(dtp::ArraySize::Static(dtp::Capacity::Shifted(start, _))) =
         var_declaration.array_size()
     {
-        annotations.push(format!("IEC61499_StartIndex({start})"));
+        annotations.push(format!("@IEC61499_StartIndex({start})"));
     }
 
     let msg_comment = match annotations.is_empty() {

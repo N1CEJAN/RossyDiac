@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fs::File;
 use std::string::ToString;
 
@@ -13,6 +14,8 @@ pub fn write(data_type: DataType, to_directory: &str) -> Result<()> {
     let mut config = EmitterConfig::new();
     config.perform_escaping = false;
     config.perform_indent = true;
+    config.indent_string = Cow::Borrowed("    ");
+    config.pad_self_closing = false;
     let file = File::create(format!("{to_directory}{data_type_name}.dtp"))?;
     custom_data_type_element.write_with_config(file, config)?;
     Ok(())
