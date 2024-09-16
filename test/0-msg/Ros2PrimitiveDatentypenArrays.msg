@@ -1,0 +1,17 @@
+bool[2] bool
+byte[2] byte
+uint8[2] uint8
+uint16[2] uint16
+uint32[2] uint32
+uint64[2] uint64
+int8[2] int8
+int16[2] int16
+int32[2] int32
+int64[2] int64
+float32[2] float32
+float64[2] float64
+char[2] char
+string[2] string
+string<=2[2] bound_string
+wstring[2] wstring
+wstring<=2[2] bound_wstring

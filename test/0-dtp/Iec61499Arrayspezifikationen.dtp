@@ -9,6 +9,5 @@
 	<StructuredType>
 		<VarDeclaration Name="static_array_with_capacity" Type="BOOL" ArraySize="3"/>
 		<VarDeclaration Name="static_array_with_indexation" Type="BOOL" ArraySize="-1..1"/>
-		<VarDeclaration Name="dynamic_array" Type="BOOL" ArraySize="*"/>
 	</StructuredType>
 </DataType>
