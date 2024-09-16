@@ -241,7 +241,7 @@ fn parse_start_index(input: &str) -> IResult<&str, i64> {
         delimited(
             tag("@IEC61499_StartIndex("),
             recognize(tuple((opt(alt((tag("-"), tag("+")))), digit1))),
-            tag(")")
+            tag(")"),
         ),
         |str: &str| i64::from_str_radix(str, 10),
     )(input)
@@ -313,8 +313,10 @@ fn convert_initial_value(
         }
         msg::InitialValue::Byte(v) => dtp::InitialValue::BYTE(convert_int_literal(v)),
         msg::InitialValue::Char(v) => dtp::InitialValue::CHAR(convert_to_char_literal(v)?),
-        msg::InitialValue::String(v) => dtp::InitialValue::STRING(v.to_string()),
-        msg::InitialValue::Wstring(v) => dtp::InitialValue::WSTRING(v.to_string()),
+        msg::InitialValue::String(v) => {
+            dtp::InitialValue::STRING(v.replace("'", "$'").replace("\"", "&quot;"))
+        }
+        msg::InitialValue::Wstring(v) => dtp::InitialValue::WSTRING(v.replace("\"", "$&quot;")),
         msg::InitialValue::Array(v) => {
             // Determine new capacity based on field constraint
             let new_capacity = match field.constraint() {
