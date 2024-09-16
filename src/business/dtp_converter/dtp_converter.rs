@@ -238,18 +238,16 @@ fn convert_reference(
     dtp_reference_string: &str,
 ) -> Result<msg::Reference> {
     let reference_parts: Vec<&str> = dtp_reference_string.split("_").collect();
-    let is_valid_ros2_absolute_reference =
-        is_absolute_reference(var_declaration) && reference_parts.len() == 4;
-    let is_valid_ros2_relative_reference =
-        is_relative_reference(var_declaration) && reference_parts.len() == 4;
-    let is_valid_iec61499_reference = reference_parts.len() == 1;
-    
-    if is_valid_ros2_absolute_reference {
+    if is_absolute_reference(var_declaration) && reference_parts.len() == 4 {
         Ok(msg::Reference::Absolute {
             package: reference_parts[1].to_string(),
             file: reference_parts[3].to_string(),
         })
-    } else if is_valid_ros2_relative_reference || is_valid_iec61499_reference {
+    } else if is_relative_reference(var_declaration) && reference_parts.len() == 4 {
+        Ok(msg::Reference::Relative {
+            file: reference_parts[3].to_string(),
+        })
+    } else if reference_parts.len() == 1 {
         Ok(msg::Reference::Relative {
             file: dtp_reference_string.to_string(),
         })
