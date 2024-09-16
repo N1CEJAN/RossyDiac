@@ -1,9 +1,10 @@
 use crate::business::error::Result;
 use crate::core::{dtp, msg};
+use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::digit1;
-use nom::combinator::map_res;
-use nom::sequence::delimited;
+use nom::combinator::{map_res, opt, recognize};
+use nom::sequence::{delimited, tuple};
 use nom::{Finish, IResult};
 
 const ELEMENT_COUNTER_SUFFIX: &'static str = "_element_counter";
@@ -237,8 +238,12 @@ fn get_start_index(field: &msg::Field) -> Result<i64> {
 
 fn parse_start_index(input: &str) -> IResult<&str, i64> {
     map_res(
-        delimited(tag("@IEC61499_StartIndex("), digit1, tag(")")),
-        |start_index: &str| i64::from_str_radix(start_index, 10),
+        delimited(
+            tag("@IEC61499_StartIndex("),
+            recognize(tuple((opt(alt((tag("-"), tag("+")))), digit1))),
+            tag(")")
+        ),
+        |str: &str| i64::from_str_radix(str, 10),
     )(input)
 }
 
