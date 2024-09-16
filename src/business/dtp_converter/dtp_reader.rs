@@ -119,14 +119,12 @@ fn parse_var_declaration(element: &Element) -> Result<VarDeclaration> {
             "No \"Type\" attribute defined for \"{}\" element",
             element.name
         ))?;
-    // sollte definiert sein in Annex B vom IEC 61131-3 (Quelle: IEC 61499-2 Table A.3)
     let array_size = element
         .attributes
         .get_key_value(XML_ATTRIBUTE_ARRAY_SIZE)
         .map(|key_value| key_value.1.clone())
         .map(|value| parse_array_size(value.as_str()))
         .transpose()?;
-    // sollte definiert sein in Annex B.1.4.3 vom IEC 61131-3 (Quelle: IEC 61499-2 Table A.3)
     let initial_value = element
         .attributes
         .get_key_value(XML_ATTRIBUTE_INITIAL_VALUE)
@@ -322,9 +320,7 @@ fn parse_char_literal(input: &str) -> Result<CharLiteral> {
 
     // Annahme: CHAR's werden nur im Format '$<h0><h1>' eingegeben
     if !actual_value.starts_with("$") {
-        return Err(
-            "Only hex char literals are supported. Hex char literals start with '$'".into(),
-        );
+        return Err("Hex char literals expected".into());
     }
     // Strip the '$' prefix
     let hex_part = &actual_value[1..];
