@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<DataType Name="ROS2_conversiontests_msg_Ros2Referenzen" Comment="">
-	<StructuredType>
-		<VarDeclaration Name="absolute_reference" Type="ROS2_conversiontests_msg_Ros2PrimitiverDatentyp" Comment=""/>
-		<VarDeclaration Name="array_of_absolute_references" Type="ROS2_conversiontests_msg_Ros2PrimitiverDatentyp" Comment="" ArraySize="0..2"/>
-		<VarDeclaration Name="relative_reference" Type="ROS2_conversiontests_msg_Ros2PrimitiverDatentyp" Comment=""/>
-		<VarDeclaration Name="array_of_relative_references" Type="ROS2_conversiontests_msg_Ros2PrimitiverDatentyp" Comment="" ArraySize="0..2"/>
-	</StructuredType>
-</DataType>
