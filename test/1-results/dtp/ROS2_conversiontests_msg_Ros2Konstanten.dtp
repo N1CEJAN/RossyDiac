@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <DataType Name="ROS2_conversiontests_msg_Ros2Konstanten">
-  <StructuredType>
-    <VarDeclaration Name="CONSTANT" Type="STRING" InitialValue="'hallo!'">
-      <Attribute Name="ROS2_CONSTANT" Type="BOOL" Value="1" />
-    </VarDeclaration>
-    <VarDeclaration Name="CONSTANT_ARRAY" Type="STRING" ArraySize="100" InitialValue="['1', '2', '3', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']">
-      <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1" />
-      <Attribute Name="ROS2_CONSTANT" Type="BOOL" Value="1" />
-    </VarDeclaration>
-    <VarDeclaration Name="CONSTANT_ARRAY_element_counter" Type="ULINT" InitialValue="3">
-      <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'CONSTANT_ARRAY'" />
-    </VarDeclaration>
-  </StructuredType>
+    <StructuredType>
+        <VarDeclaration Name="CONSTANT" Type="STRING" InitialValue="'hallo!'">
+            <Attribute Name="ROS2_CONSTANT" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="CONSTANT_ARRAY" Type="STRING" ArraySize="100" InitialValue="['1', '2', '3', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']">
+            <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
+            <Attribute Name="ROS2_CONSTANT" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="CONSTANT_ARRAY_element_counter" Type="ULINT" InitialValue="3">
+            <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'CONSTANT_ARRAY'"/>
+        </VarDeclaration>
+    </StructuredType>
 </DataType>

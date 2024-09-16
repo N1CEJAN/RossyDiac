@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="ROS2_conversiontests_msg_Ros2PrimitiveDatentypenArrays">
+    <StructuredType>
+        <VarDeclaration Name="bool_array" Type="BOOL" ArraySize="2"/>
+        <VarDeclaration Name="byte_array" Type="BYTE" ArraySize="2"/>
+        <VarDeclaration Name="uint8_array" Type="USINT" ArraySize="2"/>
+        <VarDeclaration Name="uint16_array" Type="UINT" ArraySize="2"/>
+        <VarDeclaration Name="uint32_array" Type="UDINT" ArraySize="2"/>
+        <VarDeclaration Name="uint64_array" Type="ULINT" ArraySize="2"/>
+        <VarDeclaration Name="int8_array" Type="SINT" ArraySize="2"/>
+        <VarDeclaration Name="int16_array" Type="INT" ArraySize="2"/>
+        <VarDeclaration Name="int32_array" Type="DINT" ArraySize="2"/>
+        <VarDeclaration Name="int64_array" Type="LINT" ArraySize="2"/>
+        <VarDeclaration Name="float32_array" Type="REAL" ArraySize="2"/>
+        <VarDeclaration Name="float64_array" Type="LREAL" ArraySize="2"/>
+        <VarDeclaration Name="char_array" Type="CHAR" ArraySize="2"/>
+        <VarDeclaration Name="string_array" Type="STRING" ArraySize="2"/>
+        <VarDeclaration Name="bound_string_array" Type="STRING" ArraySize="2">
+            <Attribute Name="ROS2_BoundString" Type="ULINT" Value="2"/>
+        </VarDeclaration>
+        <VarDeclaration Name="wstring_array" Type="WSTRING" ArraySize="2"/>
+        <VarDeclaration Name="bound_wstring_array" Type="WSTRING" ArraySize="2">
+            <Attribute Name="ROS2_BoundString" Type="ULINT" Value="2"/>
+        </VarDeclaration>
+    </StructuredType>
+</DataType>
