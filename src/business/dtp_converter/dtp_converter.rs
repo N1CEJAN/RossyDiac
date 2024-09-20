@@ -5,7 +5,7 @@ pub fn convert(package_name: &str, data_type: &dtp::DataType) -> Result<msg::Str
     let name = convert_data_type_name(package_name, data_type)?;
     let fields: Vec<msg::Field> = match data_type.data_type_kind() {
         dtp::DataTypeKind::StructuredType(structured_type) => {
-            convert_structured_type(structured_type)?
+            convert_structured_type(package_name, structured_type)?
         }
     };
     Ok(msg::StructuredType::new(&name, fields))
@@ -23,13 +23,13 @@ fn convert_data_type_name(package_name: &str, data_type: &dtp::DataType) -> Resu
         .to_string())
 }
 
-fn convert_structured_type(structured_type: &dtp::StructuredType) -> Result<Vec<msg::Field>> {
+fn convert_structured_type(module_name: &str, structured_type: &dtp::StructuredType) -> Result<Vec<msg::Field>> {
     let mut fields: Vec<msg::Field> = Vec::new();
 
     for structured_type_child in structured_type.children() {
         match structured_type_child {
             dtp::StructuredTypeChild::VarDeclaration(var_declaration) => fields.append(
-                &mut convert_var_declaration(structured_type, var_declaration)?,
+                &mut convert_var_declaration(module_name, structured_type, var_declaration)?,
             ),
         }
     }
@@ -37,6 +37,7 @@ fn convert_structured_type(structured_type: &dtp::StructuredType) -> Result<Vec<
 }
 
 fn convert_var_declaration(
+    module_name: &str,
     structured_type: &dtp::StructuredType,
     var_declaration: &dtp::VarDeclaration,
 ) -> Result<Vec<msg::Field>> {
@@ -49,7 +50,7 @@ fn convert_var_declaration(
     }
 
     Ok(vec![msg::Field::new(
-        &convert_to_msg_base_type(var_declaration)?,
+        &convert_to_msg_base_type(module_name, var_declaration)?,
         &convert_to_msg_constraint(var_declaration)?,
         &convert_to_field_name(var_declaration),
         &convert_to_msg_initial_value(structured_type, var_declaration)?,
@@ -83,7 +84,7 @@ fn convert_to_msg_comment(var_declaration: &dtp::VarDeclaration) -> Option<Strin
     }
 }
 
-fn convert_to_msg_base_type(var_declaration: &dtp::VarDeclaration) -> Result<msg::BaseType> {
+fn convert_to_msg_base_type(module_name: &str, var_declaration: &dtp::VarDeclaration) -> Result<msg::BaseType> {
     let result = match var_declaration.base_type() {
         dtp::BaseType::BOOL => msg::BaseType::Bool,
         dtp::BaseType::SINT => msg::BaseType::Int8,
@@ -104,7 +105,7 @@ fn convert_to_msg_base_type(var_declaration: &dtp::VarDeclaration) -> Result<msg
         dtp::BaseType::STRING => msg::BaseType::String(convert_string_bound(var_declaration)),
         dtp::BaseType::WSTRING => msg::BaseType::Wstring(convert_string_bound(var_declaration)),
         dtp::BaseType::Custom(value) => {
-            msg::BaseType::Custom(convert_reference(var_declaration, value)?)
+            msg::BaseType::Custom(convert_reference(module_name, var_declaration, value)?)
         }
     };
     Ok(result)
@@ -234,13 +235,14 @@ fn convert_field_type(
 }
 
 fn convert_reference(
+    module_name: &str,
     var_declaration: &dtp::VarDeclaration,
     dtp_reference_string: &str,
 ) -> Result<msg::Reference> {
     let reference_parts: Vec<&str> = dtp_reference_string.split("_").collect();
     if is_absolute_reference(var_declaration) && reference_parts.len() == 4 {
         Ok(msg::Reference::Absolute {
-            package: reference_parts[1].to_string(),
+            package: module_name.to_string(),
             file: reference_parts[3].to_string(),
         })
     } else if is_relative_reference(var_declaration) && reference_parts.len() == 4 {

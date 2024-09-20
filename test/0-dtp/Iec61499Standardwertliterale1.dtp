@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="Iec61499Standardwertliterale1">
+	<StructuredType>
+		<VarDeclaration Name="dec_sint" Type="SINT" InitialValue="-128"/>
+		<VarDeclaration Name="bin_sint" Type="SINT" InitialValue="2#111_1111"/>
+		<VarDeclaration Name="oct_sint" Type="SINT" InitialValue="8#177"/>
+		<VarDeclaration Name="hex_sint" Type="SINT" InitialValue="16#7F"/>
+		<VarDeclaration Name="int_bool" Type="BOOL" InitialValue="1"/>
+		<VarDeclaration Name="string_bool" Type="BOOL" InitialValue="TRUE"/>
+		<VarDeclaration Name="char_hex" Type="CHAR" InitialValue="'$41'"/>
+		<VarDeclaration Name="empty_string" Type="STRING" InitialValue="''"/>
+		<VarDeclaration Name="special_string" Type="STRING" InitialValue="' aA1&amp;'"/>
+		<VarDeclaration Name="space_string" Type="STRING" InitialValue="' '"/>
+		<VarDeclaration Name="a_real" Type="REAL" InitialValue="1.1"/>
+	</StructuredType>
+</DataType>

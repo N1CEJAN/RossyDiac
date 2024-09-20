@@ -1,4 +1,2 @@
 conversion_tests/Ros2PrimitiveDatentypen absolute_reference
-conversion_tests/Ros2PrimitiveDatentypen[] absolute_references
 Ros2PrimitiveDatentypen relative_reference
-Ros2PrimitiveDatentypen[] relative_references

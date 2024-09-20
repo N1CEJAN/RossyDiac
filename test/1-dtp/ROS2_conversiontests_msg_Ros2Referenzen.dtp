@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="ROS2_conversiontests_msg_Ros2Referenzen">
+    <StructuredType>
+        <VarDeclaration Name="absolute_reference" Type="ROS2_conversiontests_msg_Ros2PrimitiveDatentypen">
+            <Attribute Name="ROS2_AbsoluteReference" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="relative_reference" Type="ROS2_conversiontests_msg_Ros2PrimitiveDatentypen">
+            <Attribute Name="ROS2_RelativeReference" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+    </StructuredType>
+</DataType>

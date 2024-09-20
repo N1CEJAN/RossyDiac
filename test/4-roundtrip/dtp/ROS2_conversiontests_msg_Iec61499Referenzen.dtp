@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<DataType Name="ROS2_conversiontests_msg_Iec61499Referenzen">
-    <StructuredType>
-        <VarDeclaration Name="reference" Type="ROS2_conversiontests_msg_Iec61499PrimitiveDatentypen">
-            <Attribute Name="ROS2_RelativeReference" Type="BOOL" Value="1"/>
-        </VarDeclaration>
-    </StructuredType>
-</DataType>
