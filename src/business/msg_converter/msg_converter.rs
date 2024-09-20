@@ -258,7 +258,7 @@ fn convert_to_var_optional_array_size(field: &msg::Field) -> Result<Option<dtp::
             Some(dtp::ArraySize::Static(dtp::Capacity::InPlace(*capacity)))
         }
         Some(msg::Constraint::UnboundedDynamicArray) => {
-            Some(dtp::ArraySize::Static(dtp::Capacity::InPlace(100)))
+            Some(dtp::ArraySize::Static(dtp::Capacity::InPlace(3)))
         }
         Some(msg::Constraint::BoundedDynamicArray(bound)) => {
             Some(dtp::ArraySize::Static(dtp::Capacity::InPlace(*bound)))
@@ -321,7 +321,7 @@ fn convert_initial_value(
             // Determine new capacity based on field constraint
             let new_capacity = match field.constraint() {
                 Some(msg::Constraint::BoundedDynamicArray(capacity)) => *capacity,
-                Some(msg::Constraint::UnboundedDynamicArray) => 100,
+                Some(msg::Constraint::UnboundedDynamicArray) => 3,
                 _ => v.len(),
             };
 
