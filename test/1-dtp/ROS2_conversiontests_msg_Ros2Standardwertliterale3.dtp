@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="ROS2_conversiontests_msg_Ros2Standardwertliterale3">
+    <StructuredType>
+        <VarDeclaration Name="int_dec0" Type="SINT" ArraySize="3" InitialValue="[1, 2, 0]">
+            <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="int_dec0_element_counter" Type="ULINT" InitialValue="2">
+            <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'int_dec0'"/>
+        </VarDeclaration>
+        <VarDeclaration Name="int_dec1" Type="SINT" ArraySize="3" InitialValue="[1, 2, 0]">
+            <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="int_dec1_element_counter" Type="ULINT" InitialValue="2">
+            <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'int_dec1'"/>
+        </VarDeclaration>
+    </StructuredType>
+</DataType>

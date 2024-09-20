@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="ROS2_conversiontests_msg_Ros2Standardwertliterale2">
+    <StructuredType>
+        <VarDeclaration Name="bool_string" Type="BOOL" ArraySize="3" InitialValue="[FALSE, TRUE, FALSE]">
+            <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="bool_string_element_counter" Type="ULINT" InitialValue="2">
+            <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'bool_string'"/>
+        </VarDeclaration>
+        <VarDeclaration Name="bool_int" Type="BOOL" ArraySize="3" InitialValue="[0, 1, 0]">
+            <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="bool_int_element_counter" Type="ULINT" InitialValue="2">
+            <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'bool_int'"/>
+        </VarDeclaration>
+    </StructuredType>
+</DataType>

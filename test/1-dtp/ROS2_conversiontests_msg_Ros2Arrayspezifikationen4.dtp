@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="ROS2_conversiontests_msg_Ros2Arrayspezifikationen4">
+    <StructuredType>
+        <VarDeclaration Name="int8_array" Type="SINT" ArraySize="100">
+            <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="int8_array_element_counter" Type="ULINT" InitialValue="0">
+            <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'int8_array'"/>
+        </VarDeclaration>
+        <VarDeclaration Name="int16_array" Type="INT" ArraySize="100">
+            <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="int16_array_element_counter" Type="ULINT" InitialValue="0">
+            <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'int16_array'"/>
+        </VarDeclaration>
+        <VarDeclaration Name="int32_array" Type="DINT" ArraySize="100">
+            <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="int32_array_element_counter" Type="ULINT" InitialValue="0">
+            <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'int32_array'"/>
+        </VarDeclaration>
+        <VarDeclaration Name="int64_array" Type="LINT" ArraySize="100">
+            <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
+        </VarDeclaration>
+        <VarDeclaration Name="int64_array_element_counter" Type="ULINT" InitialValue="0">
+            <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'int64_array'"/>
+        </VarDeclaration>
+    </StructuredType>
+</DataType>
