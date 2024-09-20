@@ -1,8 +1,8 @@
 bool a_bool
 byte a_byte
-uint16 a_word // @IEC61499_WORD.
-uint32 a_dword // @IEC61499_DWORD.
-uint64 a_lword // @IEC61499_LWORD.
+uint16 a_word # @IEC61499_WORD.
+uint32 a_dword # @IEC61499_DWORD.
+uint64 a_lword # @IEC61499_LWORD.
 int8 a_sint
 int16 a_int
 int32 a_dint

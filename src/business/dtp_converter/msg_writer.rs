@@ -35,7 +35,7 @@ fn field_as_string(field: &Field) -> String {
 }
 
 fn comment_as_string(comment: Option<&String>) -> String {
-    comment.map_or_else(String::new, |comment| format!(" // {comment}"))
+    comment.map_or_else(String::new, |comment| format!(" # {comment}"))
 }
 
 fn field_type_as_string(field_type: &FieldType) -> String {
