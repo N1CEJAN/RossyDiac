@@ -18,6 +18,8 @@
         <VarDeclaration Name="a_lreal" Type="LREAL"/>
         <VarDeclaration Name="a_char" Type="CHAR"/>
         <VarDeclaration Name="a_string" Type="STRING"/>
+        <VarDeclaration Name="a_bound_string" Type="STRING[2]"/>
         <VarDeclaration Name="a_wstring" Type="WSTRING"/>
+        <VarDeclaration Name="a_bound_wstring" Type="WSTRING[2]"/>
 	</StructuredType>
 </DataType>

@@ -15,4 +15,6 @@ float32 a_real
 float64 a_lreal
 char a_char
 string a_string
+string<=2 a_bound_string
 wstring a_wstring
+wstring<=2 a_bound_wstring

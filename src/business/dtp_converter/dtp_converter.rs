@@ -102,8 +102,8 @@ fn convert_to_msg_base_type(module_name: &str, var_declaration: &dtp::VarDeclara
         dtp::BaseType::REAL => msg::BaseType::Float32,
         dtp::BaseType::LREAL => msg::BaseType::Float64,
         dtp::BaseType::CHAR => msg::BaseType::Char,
-        dtp::BaseType::STRING => msg::BaseType::String(convert_string_bound(var_declaration)),
-        dtp::BaseType::WSTRING => msg::BaseType::Wstring(convert_string_bound(var_declaration)),
+        dtp::BaseType::STRING(opt_bound) => msg::BaseType::String(opt_bound.clone()),
+        dtp::BaseType::WSTRING(opt_bount) => msg::BaseType::Wstring(opt_bount.clone()),
         dtp::BaseType::Custom(value) => {
             msg::BaseType::Custom(convert_reference(module_name, var_declaration, value)?)
         }
@@ -290,15 +290,6 @@ fn convert_array_bound(var_declaration: &dtp::VarDeclaration) -> Option<usize> {
         .attributes()
         .into_iter()
         .find(|attribute| attribute.name == "ROS2_BoundDynamicArray")
-        .map(|initial_value| &initial_value.value)
-        .and_then(extract_usize_from_intial_value)
-}
-
-fn convert_string_bound(var_declaration: &dtp::VarDeclaration) -> Option<usize> {
-    var_declaration
-        .attributes()
-        .into_iter()
-        .find(|attribute| attribute.name == "ROS2_BoundString")
         .map(|initial_value| &initial_value.value)
         .and_then(extract_usize_from_intial_value)
 }

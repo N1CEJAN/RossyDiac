@@ -144,8 +144,12 @@ fn base_type_to_string(base_type: &BaseType) -> String {
         BaseType::DWORD => "DWORD".to_string(),
         BaseType::LWORD => "LWORD".to_string(),
         BaseType::CHAR => "CHAR".to_string(),
-        BaseType::STRING => "STRING".to_string(),
-        BaseType::WSTRING => "WSTRING".to_string(),
+        BaseType::STRING(opt_bound) => opt_bound
+            .map(|bound| format!("STRING[{bound}]"))
+            .unwrap_or_else(|| "STRING".to_string()),
+        BaseType::WSTRING(opt_bound) => opt_bound
+            .map(|bound| format!("WSTRING[{bound}]"))
+            .unwrap_or_else(|| "WSTRING".to_string()),
         BaseType::Custom(type_name) => type_name.clone(),
     }
 }

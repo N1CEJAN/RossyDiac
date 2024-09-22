@@ -162,8 +162,8 @@ pub enum BaseType {
     LWORD,
     // Der Einfachheit halber wird CHAR von 4diac aufgenommen
     CHAR,
-    STRING,
-    WSTRING,
+    STRING(Option<usize>),
+    WSTRING(Option<usize>),
     Custom(String),
 }
 

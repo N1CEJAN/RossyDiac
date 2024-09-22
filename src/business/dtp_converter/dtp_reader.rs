@@ -1,10 +1,10 @@
 use log::info;
 use nom::branch::alt;
-use nom::bytes::complete::{is_a, tag};
+use nom::bytes::complete::{is_a, tag, take_till1};
 use nom::character::complete::{digit1, hex_digit1, oct_digit1};
-use nom::combinator::{map_res, opt, recognize};
+use nom::combinator::{map, map_res, opt, recognize};
 use nom::multi::{many0, many1};
-use nom::sequence::{preceded, tuple};
+use nom::sequence::{delimited, preceded, tuple};
 use nom::{Finish, IResult};
 use std::num::ParseIntError;
 use xmltree::{Element, XMLNode};
@@ -118,7 +118,7 @@ fn parse_var_declaration(element: &Element) -> Result<VarDeclaration> {
         .ok_or(format!(
             "No \"Type\" attribute defined for \"{}\" element",
             element.name
-        ))?;
+        ))??;
     let array_size = element
         .attributes
         .get_key_value(XML_ATTRIBUTE_ARRAY_SIZE)
@@ -165,7 +165,7 @@ fn parse_attribute(element: &Element) -> Result<Attribute> {
         .get_key_value(XML_ATTRIBUTE_TYPE)
         .map(|key_value| key_value.1.clone())
         .map(|value| parse_base_type(value.as_str()))
-        .ok_or("No \"Type\" attribute defined for \"Attribute\" element")?;
+        .ok_or("No \"Type\" attribute defined for \"Attribute\" element")??;
     let value = element
         .attributes
         .get_key_value(XML_ATTRIBUTE_VALUE)
@@ -186,28 +186,43 @@ fn parse_attribute(element: &Element) -> Result<Attribute> {
     })
 }
 
-fn parse_base_type(string: &str) -> BaseType {
-    match string {
-        "BOOL" => BaseType::BOOL,
-        "SINT" => BaseType::SINT,
-        "INT" => BaseType::INT,
-        "DINT" => BaseType::DINT,
-        "LINT" => BaseType::LINT,
-        "USINT" => BaseType::USINT,
-        "UINT" => BaseType::UINT,
-        "UDINT" => BaseType::UDINT,
-        "ULINT" => BaseType::ULINT,
-        "REAL" => BaseType::REAL,
-        "LREAL" => BaseType::LREAL,
-        "BYTE" => BaseType::BYTE,
-        "WORD" => BaseType::WORD,
-        "DWORD" => BaseType::DWORD,
-        "LWORD" => BaseType::LWORD,
-        "CHAR" => BaseType::CHAR,
-        "STRING" => BaseType::STRING,
-        "WSTRING" => BaseType::WSTRING,
-        _ => BaseType::Custom(string.to_string()),
-    }
+fn parse_base_type(string: &str) -> Result<BaseType> {
+    Ok(alt((
+        map(tag("BOOL"), |_| BaseType::BOOL),
+        map(tag("BYTE"), |_| BaseType::BYTE),
+        map(tag("WORD"), |_| BaseType::WORD),
+        map(tag("DWORD"), |_| BaseType::DWORD),
+        map(tag("LWORD"), |_| BaseType::LWORD),
+        map(tag("USINT"), |_| BaseType::USINT),
+        map(tag("UINT"), |_| BaseType::UINT),
+        map(tag("UDINT"), |_| BaseType::UDINT),
+        map(tag("ULINT"), |_| BaseType::ULINT),
+        map(tag("SINT"), |_| BaseType::SINT),
+        map(tag("INT"), |_| BaseType::INT),
+        map(tag("DINT"), |_| BaseType::DINT),
+        map(tag("LINT"), |_| BaseType::LINT),
+        map(tag("REAL"), |_| BaseType::REAL),
+        map(tag("LREAL"), |_| BaseType::LREAL),
+        map(tag("CHAR"), |_| BaseType::CHAR),
+        map(
+            tuple((tag("STRING"), opt(delimited(tag("["), digit1, tag("]"))))),
+            |(_, optional_bound): (&str, Option<&str>)| {
+                BaseType::STRING(optional_bound.map(|digits| digits.parse().unwrap()))
+            },
+        ),
+        map(
+            tuple((tag("WSTRING"), opt(delimited(tag("["), digit1, tag("]"))))),
+            |(_, optional_bound): (&str, Option<&str>)| {
+                BaseType::WSTRING(optional_bound.map(|digits| digits.parse().unwrap()))
+            },
+        ),
+        map(take_till1(|c| c == '"'), |custom_type: &str| {
+            BaseType::Custom(custom_type.to_string())
+        }),
+    ))(string)
+        .map_err(|e: nom::Err<nom::error::Error<&str>>| e.to_owned()) 
+        .finish()?
+    .1)
 }
 
 fn parse_array_size(input: &str) -> Result<ArraySize> {
@@ -276,8 +291,8 @@ fn parse_initial_value<'a>(
             BaseType::REAL => parse_primitive_initial_value!(REAL),
             BaseType::LREAL => parse_primitive_initial_value!(LREAL),
             BaseType::CHAR => Box::new(|str| parse_char_literal(str).map(InitialValue::CHAR)),
-            BaseType::STRING => Box::new(|str| parse_string_literal(str).map(InitialValue::STRING)),
-            BaseType::WSTRING => {
+            BaseType::STRING(_) => Box::new(|str| parse_string_literal(str).map(InitialValue::STRING)),
+            BaseType::WSTRING(_) => {
                 Box::new(|str| parse_wstring_literal(str).map(InitialValue::WSTRING))
             }
             BaseType::Custom(_) => unreachable!(),

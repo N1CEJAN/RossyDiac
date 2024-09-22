@@ -64,7 +64,7 @@ fn convert_field(package_name: &str, field: &msg::Field) -> Result<Vec<dtp::Stru
                 &None,
                 &vec![dtp::Attribute {
                     name: "ROS2_ElementCounter".to_string(),
-                    base_type: dtp::BaseType::STRING,
+                    base_type: dtp::BaseType::STRING(None),
                     value: dtp::InitialValue::STRING(field.name().to_string()),
                     comment: None,
                 }],
@@ -129,16 +129,6 @@ fn convert_to_attributes(field: &msg::Field) -> Result<Vec<dtp::Attribute>> {
             comment: None,
         })
     }
-    if let msg::BaseType::String(Some(bound)) | msg::BaseType::Wstring(Some(bound)) =
-        field.base_type()
-    {
-        attributes.push(dtp::Attribute {
-            name: "ROS2_BoundString".to_string(),
-            base_type: dtp::BaseType::ULINT,
-            value: dtp::InitialValue::ULINT(dtp::IntLiteral::UnsignedDecimalInt(*bound as u64)),
-            comment: None,
-        })
-    }
     if let msg::FieldType::Constant(_) = field.field_type() {
         attributes.push(dtp::Attribute {
             name: "ROS2_CONSTANT".to_string(),
@@ -188,8 +178,8 @@ fn convert_to_var_base_type(package_name: &str, field: &msg::Field) -> dtp::Base
         msg::BaseType::Float32 => dtp::BaseType::REAL,
         msg::BaseType::Float64 => dtp::BaseType::LREAL,
         msg::BaseType::Char => dtp::BaseType::CHAR,
-        msg::BaseType::String(_) => dtp::BaseType::STRING,
-        msg::BaseType::Wstring(_) => dtp::BaseType::WSTRING,
+        msg::BaseType::String(opt_bound) => dtp::BaseType::STRING(opt_bound.clone()),
+        msg::BaseType::Wstring(opt_bound) => dtp::BaseType::WSTRING(opt_bound.clone()),
         msg::BaseType::Custom(a_ref) => {
             dtp::BaseType::Custom(convert_reference(package_name, a_ref))
         }
