@@ -1,0 +1,17 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from conversion_tests/1-msg/Iec61499Arrayspezifikationen1.msg
+// generated code does not contain a copyright notice
+
+
+module conversion_tests {
+  module msg {
+    typedef boolean boolean__3[3];
+    struct Iec61499Arrayspezifikationen1 {
+      boolean__3 static_array_with_capacity;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      boolean__3 static_array_with_indexation;
+    };
+  };
+};
