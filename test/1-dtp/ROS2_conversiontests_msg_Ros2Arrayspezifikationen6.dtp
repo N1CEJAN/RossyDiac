@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <DataType Name="ROS2_conversiontests_msg_Ros2Arrayspezifikationen6">
     <StructuredType>
-        <VarDeclaration Name="absolute_reference" Type="ROS2_conversiontests_msg_Ros2PrimitiveDatentypen" ArraySize="100">
+        <VarDeclaration Name="absolute_reference" Type="ROS2_conversiontests_msg_Ros2PrimitiveDatentypen" ArraySize="3">
             <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
             <Attribute Name="ROS2_AbsoluteReference" Type="BOOL" Value="1"/>
         </VarDeclaration>
         <VarDeclaration Name="absolute_reference_element_counter" Type="ULINT" InitialValue="0">
             <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'absolute_reference'"/>
         </VarDeclaration>
-        <VarDeclaration Name="relative_reference" Type="ROS2_conversiontests_msg_Ros2PrimitiveDatentypen" ArraySize="100">
+        <VarDeclaration Name="relative_reference" Type="ROS2_conversiontests_msg_Ros2PrimitiveDatentypen" ArraySize="3">
             <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
             <Attribute Name="ROS2_RelativeReference" Type="BOOL" Value="1"/>
         </VarDeclaration>

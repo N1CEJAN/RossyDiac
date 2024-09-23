@@ -1,34 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <DataType Name="ROS2_conversiontests_msg_Ros2Arrayspezifikationen5">
     <StructuredType>
-        <VarDeclaration Name="char_array" Type="CHAR" ArraySize="100">
+        <VarDeclaration Name="char_array" Type="CHAR" ArraySize="3">
             <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
         </VarDeclaration>
         <VarDeclaration Name="char_array_element_counter" Type="ULINT" InitialValue="0">
             <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'char_array'"/>
         </VarDeclaration>
-        <VarDeclaration Name="string_array" Type="STRING" ArraySize="100">
+        <VarDeclaration Name="string_array" Type="STRING" ArraySize="3">
             <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
         </VarDeclaration>
         <VarDeclaration Name="string_array_element_counter" Type="ULINT" InitialValue="0">
             <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'string_array'"/>
         </VarDeclaration>
-        <VarDeclaration Name="wstring_array" Type="WSTRING" ArraySize="100">
+        <VarDeclaration Name="wstring_array" Type="WSTRING" ArraySize="3">
             <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
         </VarDeclaration>
         <VarDeclaration Name="wstring_array_element_counter" Type="ULINT" InitialValue="0">
             <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'wstring_array'"/>
         </VarDeclaration>
-        <VarDeclaration Name="bound_string_array" Type="STRING" ArraySize="100">
+        <VarDeclaration Name="bound_string_array" Type="STRING[2]" ArraySize="3">
             <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
-            <Attribute Name="ROS2_BoundString" Type="ULINT" Value="2"/>
         </VarDeclaration>
         <VarDeclaration Name="bound_string_array_element_counter" Type="ULINT" InitialValue="0">
             <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'bound_string_array'"/>
         </VarDeclaration>
-        <VarDeclaration Name="bound_wstring_array" Type="WSTRING" ArraySize="100">
+        <VarDeclaration Name="bound_wstring_array" Type="WSTRING[2]" ArraySize="3">
             <Attribute Name="ROS2_DynamicArray" Type="BOOL" Value="1"/>
-            <Attribute Name="ROS2_BoundString" Type="ULINT" Value="2"/>
         </VarDeclaration>
         <VarDeclaration Name="bound_wstring_array_element_counter" Type="ULINT" InitialValue="0">
             <Attribute Name="ROS2_ElementCounter" Type="STRING" Value="'bound_wstring_array'"/>
