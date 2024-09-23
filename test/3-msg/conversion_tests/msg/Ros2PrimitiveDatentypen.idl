@@ -1,0 +1,44 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from conversion_tests/0-msg/Ros2PrimitiveDatentypen.msg
+// generated code does not contain a copyright notice
+
+
+module conversion_tests {
+  module msg {
+    struct Ros2PrimitiveDatentypen {
+      boolean a_bool;
+
+      octet a_byte;
+
+      uint8 a_uint8;
+
+      uint16 a_uint16;
+
+      uint32 a_uint32;
+
+      uint64 a_uint64;
+
+      int8 a_int8;
+
+      int16 a_int16;
+
+      int32 a_int32;
+
+      int64 a_int64;
+
+      float a_float32;
+
+      double a_float64;
+
+      uint8 a_char;
+
+      string a_string;
+
+      string<2> a_bound_string;
+
+      wstring a_wstring;
+
+      wstring<2> a_bound_wstring;
+    };
+  };
+};
