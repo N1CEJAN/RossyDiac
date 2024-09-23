@@ -347,5 +347,5 @@ fn is_constant(var_declaration: &dtp::VarDeclaration) -> bool {
     var_declaration
         .attributes()
         .into_iter()
-        .any(|attr| attr.name == "ROS2_Constant")
+        .any(|attr| attr.name == "ROS2_CONSTANT")
 }

@@ -160,7 +160,7 @@ fn parse_field_type<'a>(
 
 fn parse_line_comment(input: &str) -> IResult<&str, String> {
     map(
-        preceded(tag("//"), take_until_parser(eol_or_eof)),
+        preceded(tag("#"), take_until_parser(eol_or_eof)),
         |str: &str| str.trim().to_string(),
     )(input)
 }
