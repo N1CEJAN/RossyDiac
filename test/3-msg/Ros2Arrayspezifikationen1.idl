@@ -1,0 +1,17 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from conversion_tests/0-msg/Ros2Arrayspezifikationen1.msg
+// generated code does not contain a copyright notice
+
+
+module conversion_tests {
+  module msg {
+    typedef int8 int8__2[2];
+    struct Ros2Arrayspezifikationen1 {
+      int8__2 static_array;
+
+      sequence<int8> dynamic_array;
+
+      sequence<int8, 2> bound_dynamic_array;
+    };
+  };
+};
