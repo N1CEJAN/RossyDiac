@@ -1,0 +1,56 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from conversion_tests/1-msg/Iec61499PrimitiveDatentypen.msg
+// generated code does not contain a copyright notice
+
+
+module conversion_tests {
+  module msg {
+    struct Iec61499PrimitiveDatentypen {
+      boolean a_bool;
+
+      octet a_byte;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_WORD.")
+      uint16 a_word;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_DWORD.")
+      uint32 a_dword;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_LWORD.")
+      uint64 a_lword;
+
+      int8 a_sint;
+
+      int16 a_int;
+
+      int32 a_dint;
+
+      int64 a_lint;
+
+      uint8 a_usint;
+
+      uint16 a_uint;
+
+      uint32 a_udint;
+
+      uint64 a_ulint;
+
+      float a_real;
+
+      double a_lreal;
+
+      uint8 a_char;
+
+      string a_string;
+
+      string<2> a_bound_string;
+
+      wstring a_wstring;
+
+      wstring<2> a_bound_wstring;
+    };
+  };
+};
