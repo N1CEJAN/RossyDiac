@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataType Name="ROS2_conversiontests_msg_Iec61499Standardwertliterale2">
+    <StructuredType>
+        <VarDeclaration Name="dec_sint_array" Type="SINT" ArraySize="-1..0" InitialValue="[1, 2]"/>
+        <VarDeclaration Name="bin_sint_array" Type="SINT" ArraySize="-1..0" InitialValue="[2#0, 2#1]"/>
+        <VarDeclaration Name="oct_sint_array" Type="SINT" ArraySize="-1..0" InitialValue="[8#1, 8#2]"/>
+        <VarDeclaration Name="hex_sint_array" Type="SINT" ArraySize="-1..0" InitialValue="[16#1, 16#2]"/>
+        <VarDeclaration Name="int_bool_array" Type="BOOL" ArraySize="-1..0" InitialValue="[0, 1]"/>
+        <VarDeclaration Name="string_bool_array" Type="BOOL" ArraySize="-1..0" InitialValue="[FALSE, TRUE]"/>
+        <VarDeclaration Name="char_hex_array" Type="CHAR" ArraySize="-1..0" InitialValue="['$41', '$42']"/>
+        <VarDeclaration Name="special_string_array" Type="STRING" ArraySize="-1..0" InitialValue="[' aA1&', ' aA2&']"/>
+        <VarDeclaration Name="space_string_array" Type="STRING" ArraySize="-1..0" InitialValue="[' ', ' ']"/>
+        <VarDeclaration Name="a_real_array" Type="REAL" ArraySize="-1..0" InitialValue="[0.1, 0.2]"/>
+    </StructuredType>
+</DataType>

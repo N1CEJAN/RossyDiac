@@ -1,0 +1,14 @@
+bool bool_string true
+bool bool_int 1
+int8 int_dec0 1
+int8 int_dec1 1
+int8 int_hex0 0x1
+int8 int_hex1 0x1
+int8 int_oct 0o1
+int8 int_bin 0b1
+float32 float_dec 0.1
+char char_hex 0x41
+string string_empty1 ""
+string string_escape1 "$'\"$"
+string string_empty2 ""
+string string_escape2 "\""
