@@ -1,0 +1,15 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from conversion_tests/0-msg/Ros2Konstanten.msg
+// generated code does not contain a copyright notice
+
+
+module conversion_tests {
+  module msg {
+    module Ros2Konstanten_Constants {
+      const string CONSTANT = "hallo!";
+    };
+    struct Ros2Konstanten {
+      uint8 structure_needs_at_least_one_member;
+    };
+  };
+};
