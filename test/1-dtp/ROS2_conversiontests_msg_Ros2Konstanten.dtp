@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<DataType Name="ROS2_conversiontests_msg_Ros2Konstanten">
-    <StructuredType>
-        <VarDeclaration Name="CONSTANT" Type="STRING" InitialValue="'hallo!'">
-            <Attribute Name="ROS2_CONSTANT" Type="BOOL" Value="1"/>
-        </VarDeclaration>
-    </StructuredType>
-</DataType>

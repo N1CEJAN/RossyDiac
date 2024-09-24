@@ -52,6 +52,8 @@ enum Command {
         #[arg(short = 'f', long = "file")]
         path_to_dtp_file: String,
     },
+    /// Use in project root to apply tests
+    Test,
 }
 
 pub fn run() {
@@ -79,6 +81,56 @@ pub fn run() {
         ),
         Command::PrintMsg { path_to_msg_file } => print_msg(&path_to_msg_file),
         Command::PrintDtp { path_to_dtp_file } => print_dtp(&path_to_dtp_file),
+        Command::Test => {
+            // hin
+            let _ = convert_to_msg("test/0-dtp/Iec61499Arrayspezifikationen1.dtp", "test/1-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/0-dtp/Iec61499Arrayspezifikationen2.dtp", "test/1-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/0-dtp/Iec61499PrimitiveDatentypen.dtp", "test/1-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/0-dtp/Iec61499Referenzen.dtp", "test/1-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/0-dtp/Iec61499Standardwertliterale1.dtp", "test/1-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/0-dtp/Iec61499Standardwertliterale2.dtp", "test/1-msg/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Arrayspezifikationen1.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Arrayspezifikationen2.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Arrayspezifikationen3.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Arrayspezifikationen4.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Arrayspezifikationen5.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Arrayspezifikationen6.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Konstanten.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2PrimitiveDatentypen.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Referenzen.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Standardwertliterale1.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Standardwertliterale2.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Standardwertliterale3.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Standardwertliterale4.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Standardwertliterale5.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Standardwertliterale6.msg", "test/1-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/0-msg/Ros2Standardwertliterale7.msg", "test/1-dtp/", "conversion_tests");
+            
+            // zurück
+            let _ = convert_to_dtp("test/1-msg/Iec61499Arrayspezifikationen1.msg", "test/2-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/1-msg/Iec61499Arrayspezifikationen2.msg", "test/2-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/1-msg/Iec61499PrimitiveDatentypen.msg", "test/2-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/1-msg/Iec61499Referenzen.msg", "test/2-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/1-msg/Iec61499Standardwertliterale1.msg", "test/2-dtp/", "conversion_tests");
+            let _ = convert_to_dtp("test/1-msg/Iec61499Standardwertliterale2.msg", "test/2-dtp/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Arrayspezifikationen1.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Arrayspezifikationen2.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Arrayspezifikationen3.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Arrayspezifikationen4.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Arrayspezifikationen5.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Arrayspezifikationen6.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Konstanten.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2PrimitiveDatentypen.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Referenzen.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale1.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale2.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale3.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale4.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale5.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale6.dtp", "test/2-msg/", "conversion_tests");
+            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale7.dtp", "test/2-msg/", "conversion_tests");
+            Ok(())
+        }
     };
 
     if let Err(error) = result {
