@@ -1,0 +1,96 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from conversion_tests/1-msg/Iec61499Arrayspezifikationen2.msg
+// generated code does not contain a copyright notice
+
+
+module conversion_tests {
+  module msg {
+    typedef boolean boolean__2[2];
+    typedef octet octet__2[2];
+    typedef uint16 uint16__2[2];
+    typedef uint32 uint32__2[2];
+    typedef uint64 uint64__2[2];
+    typedef int8 int8__2[2];
+    typedef int16 int16__2[2];
+    typedef int32 int32__2[2];
+    typedef int64 int64__2[2];
+    typedef uint8 uint8__2[2];
+    typedef float float__2[2];
+    typedef double double__2[2];
+    typedef string string__2[2];
+    typedef wstring wstring__2[2];
+    struct Iec61499Arrayspezifikationen2 {
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      boolean__2 static_array_with_indexation1;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      octet__2 static_array_with_indexation2;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_WORD, @IEC61499_StartIndex(-1).")
+      uint16__2 static_array_with_indexation3;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_DWORD, @IEC61499_StartIndex(-1).")
+      uint32__2 static_array_with_indexation4;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_LWORD, @IEC61499_StartIndex(-1).")
+      uint64__2 static_array_with_indexation5;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      int8__2 static_array_with_indexation6;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      int16__2 static_array_with_indexation7;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      int32__2 static_array_with_indexation8;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      int64__2 static_array_with_indexation9;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      uint8__2 static_array_with_indexation10;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      uint16__2 static_array_with_indexation11;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      uint32__2 static_array_with_indexation12;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      uint64__2 static_array_with_indexation13;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      float__2 static_array_with_indexation14;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      double__2 static_array_with_indexation15;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      uint8__2 static_array_with_indexation16;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      string__2 static_array_with_indexation17;
+
+      @verbatim (language="comment", text=
+        "@IEC61499_StartIndex(-1).")
+      wstring__2 static_array_with_indexation18;
+    };
+  };
+};
