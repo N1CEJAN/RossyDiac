@@ -4,19 +4,15 @@
 pub struct DataType {
     name: String,
     comment: Option<String>,
-    // identification: Option<Identification>,
-    // version_info: Vec<VersionInfo>,
-    // compiler_info: Option<CompilerInfo>,
-    // asn1_tag: Option<ASN1Tag>,
-    data_type_kind: DataTypeKind,
+    structured_type: StructuredType,
 }
 
 impl DataType {
-    pub fn new(name: &str, comment: &Option<String>, data_type_kind: &DataTypeKind) -> Self {
+    pub fn new(name: String, comment: Option<String>, structured_type: StructuredType) -> Self {
         Self {
-            name: name.to_string(),
-            comment: comment.clone(),
-            data_type_kind: data_type_kind.clone(),
+            name,
+            comment,
+            structured_type,
         }
     }
     pub fn comment(&self) -> &Option<String> {
@@ -25,64 +21,29 @@ impl DataType {
     pub fn name(&self) -> &str {
         &self.name
     }
-    pub fn data_type_kind(&self) -> &DataTypeKind {
-        &self.data_type_kind
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum DataTypeKind {
-    // DirectlyDerivedType(DirectlyDerivedType),
-    // EnumeratedType(EnumeratedType),
-    // SubrangeType(SubrangeType),
-    // ArrayType(ArrayType),
-    StructuredType(StructuredType),
-}
-
-impl DataTypeKind {
-    pub fn matches_any<T: AsRef<str>>(str: T) -> bool {
-        match str.as_ref() {
-            "StructuredType"
-            // | "DirectlyDerivedType"
-            // | "EnumeratedType"
-            // | "SubrangeType"
-            // | "ArrayType"
-            => true,
-            _ => false,
-        }
+    pub fn structured_type(&self) -> &StructuredType {
+        &self.structured_type
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct StructuredType {
     comment: Option<String>,
-    children: Vec<StructuredTypeChild>,
+    var_declarations: Vec<VarDeclaration>,
 }
 
 impl StructuredType {
-    pub fn new(comment: &Option<String>, children: &[StructuredTypeChild]) -> Self {
+    pub fn new(comment: Option<String>, children: Vec<VarDeclaration>) -> Self {
         Self {
-            comment: comment.clone(),
-            children: children.to_vec(),
+            comment,
+            var_declarations: children,
         }
     }
     pub fn comment(&self) -> &Option<String> {
         &self.comment
     }
-    pub fn children(&self) -> &Vec<StructuredTypeChild> {
-        &self.children
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum StructuredTypeChild {
-    VarDeclaration(VarDeclaration),
-    // SubrangeVarDeclaration(SubrangeVarDeclaration),
-}
-
-impl StructuredTypeChild {
-    pub fn matches_any<T: AsRef<str>>(str: T) -> bool {
-        matches!(str.as_ref(), "VarDeclaration")
+    pub fn var_declarations(&self) -> &Vec<VarDeclaration> {
+        &self.var_declarations
     }
 }
 
@@ -90,29 +51,28 @@ impl StructuredTypeChild {
 pub struct VarDeclaration {
     name: String,
     base_type: BaseType,
-    // https://bugs.eclipse.org/bugs/show_bug.cgi?id=581888
     array_size: Option<ArraySize>,
     initial_value: Option<InitialValue>,
     comment: Option<String>,
-    attributes: Vec<Attribute>
+    attributes: Vec<Attribute>,
 }
 
 impl VarDeclaration {
     pub fn new(
-        name: &str,
-        base_type: &BaseType,
-        array_size: &Option<ArraySize>,
-        initial_value: &Option<InitialValue>,
-        comment: &Option<String>,
-        attributes: &Vec<Attribute>
+        name: String,
+        base_type: BaseType,
+        array_size: Option<ArraySize>,
+        initial_value: Option<InitialValue>,
+        comment: Option<String>,
+        attributes: Vec<Attribute>,
     ) -> Self {
         Self {
-            name: name.to_string(),
-            base_type: base_type.clone(),
-            array_size: array_size.clone(),
-            initial_value: initial_value.clone(),
-            comment: comment.clone(),
-            attributes: attributes.clone(),
+            name,
+            base_type,
+            array_size,
+            initial_value,
+            comment,
+            attributes,
         }
     }
     pub fn name(&self) -> &str {
@@ -121,14 +81,14 @@ impl VarDeclaration {
     pub fn base_type(&self) -> &BaseType {
         &self.base_type
     }
-    pub fn array_size(&self) -> &Option<ArraySize> {
-        &self.array_size
+    pub fn array_size(&self) -> Option<&ArraySize> {
+        self.array_size.as_ref()
     }
-    pub fn initial_value(&self) -> &Option<InitialValue> {
-        &self.initial_value
+    pub fn initial_value(&self) -> Option<&InitialValue> {
+        self.initial_value.as_ref()
     }
-    pub fn comment(&self) -> &Option<String> {
-        &self.comment
+    pub fn comment(&self) -> Option<&String> {
+        self.comment.as_ref()
     }
     pub fn attributes(&self) -> &Vec<Attribute> {
         &self.attributes
@@ -137,15 +97,47 @@ impl VarDeclaration {
 
 #[derive(Clone, Debug)]
 pub struct Attribute {
-    pub name: String,
-    pub base_type: BaseType,
-    pub value: InitialValue,
-    pub comment: Option<String>
+    name: String,
+    base_type: BaseType,
+    value: InitialValue,
+    comment: Option<String>,
+}
+
+impl Attribute {
+    pub fn new(
+        name: String,
+        base_type: BaseType,
+        value: InitialValue,
+        comment: Option<String>,
+    ) -> Self {
+        Self {
+            name,
+            base_type,
+            value,
+            comment,
+        }
+    }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn base_type(&self) -> &BaseType {
+        &self.base_type
+    }
+    pub fn value(&self) -> &InitialValue {
+        &self.value
+    }
+    pub fn comment(&self) -> Option<&String> {
+        self.comment.as_ref()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum BaseType {
     BOOL,
+    BYTE,
+    WORD,
+    DWORD,
+    LWORD,
     SINT,
     INT,
     DINT,
@@ -156,81 +148,81 @@ pub enum BaseType {
     ULINT,
     REAL,
     LREAL,
-    BYTE,
-    WORD,
-    DWORD,
-    LWORD,
-    // Der Einfachheit halber wird CHAR von 4diac aufgenommen
     CHAR,
-    STRING(Option<usize>),
-    WSTRING(Option<usize>),
+    STRING(Option<u64>),
+    WSTRING(Option<u64>),
     Custom(String),
 }
 
 #[derive(Clone, Debug)]
 pub enum ArraySize {
-    Dynamic,
-    Static(Capacity),
-}
-
-#[derive(Clone, Debug)]
-pub enum Capacity {
-    InPlace(usize),
-    Shifted(i64, i64),
+    Capacity(u64),
+    Indexation(i64, i64),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InitialValue {
-    BOOL(BoolLiteral),
-    SINT(IntLiteral),
-    INT(IntLiteral),
-    DINT(IntLiteral),
-    LINT(IntLiteral),
-    USINT(IntLiteral),
-    UINT(IntLiteral),
-    UDINT(IntLiteral),
-    ULINT(IntLiteral),
+    BOOL(BoolRepresentation),
+    BYTE(IntRepresentation),
+    WORD(IntRepresentation),
+    DWORD(IntRepresentation),
+    LWORD(IntRepresentation),
+    USINT(IntRepresentation),
+    UINT(IntRepresentation),
+    UDINT(IntRepresentation),
+    ULINT(IntRepresentation),
+    SINT(IntRepresentation),
+    INT(IntRepresentation),
+    DINT(IntRepresentation),
+    LINT(IntRepresentation),
     REAL(f32),
     LREAL(f64),
-    BYTE(IntLiteral),
-    WORD(IntLiteral),
-    DWORD(IntLiteral),
-    LWORD(IntLiteral),
-    CHAR(CharLiteral),
-    STRING(String),
-    WSTRING(String),
+    CHAR(CharRepresentation),
+    STRING(Vec<CharRepresentation>),
+    WSTRING(Vec<WcharRepresentation>),
     Array(Vec<InitialValue>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum BoolRepresentation {
+    String(bool),
+    Binary(bool),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum IntRepresentation {
+    SignedDecimal(i64),
+    UnsignedDecimal(u64),
+    Binary(u64),
+    Octal(u64),
+    Heaxdecimal(u64),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum CharRepresentation {
+    Char(char),
+    Hexadecimal(char),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum WcharRepresentation {
+    Wchar(char),
+    Hexadecimal(char),
 }
 
 pub const XML_TAG_DATA_TYPE: &str = "DataType";
 pub const XML_TAG_STRUCTURED_TYPE: &str = "StructuredType";
 pub const XML_TAG_VAR_DECLARATION: &str = "VarDeclaration";
 pub const XML_TAG_ATTRIBUTE: &str = "Attribute";
-
 pub const XML_ATTRIBUTE_NAME: &str = "Name";
 pub const XML_ATTRIBUTE_TYPE: &str = "Type";
 pub const XML_ATTRIBUTE_ARRAY_SIZE: &str = "ArraySize";
 pub const XML_ATTRIBUTE_INITIAL_VALUE: &str = "InitialValue";
 pub const XML_ATTRIBUTE_VALUE: &str = "Value";
 pub const XML_ATTRIBUTE_COMMENT: &str = "Comment";
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum BoolLiteral {
-    String(bool),
-    Int(bool),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum IntLiteral {
-    SignedDecimalInt(i64),
-    UnsignedDecimalInt(u64),
-    BinaryInt(u64),
-    OctalInt(u64),
-    HexalInt(u64),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum CharLiteral {
-    Value(char),
-    Hex(char),
-}
+pub const ANNOTATION_NAME_ROS2_RELATIVE_REFERENCE: &str = "ROS2_RelativeReference";
+pub const ANNOTATION_NAME_ROS2_ABSOLUTE_REFERENCE: &str = "ROS2_AbsoluteReference";
+pub const ANNOTATION_NAME_ROS2_DYNAMIC_ARRAY: &str = "ROS2_DynamicArray";
+pub const ANNOTATION_NAME_ROS2_BOUND_DYNAMIC_ARRAY: &str = "ROS2_BoundDynamicArray";
+pub const ANNOTATION_NAME_ROS2_ELEMENT_COUNTER: &str = "ROS2_ElementCounter";
+pub const ANNOTATION_NAME_ROS2_CONSTANT: &str = "ROS2_Constant";

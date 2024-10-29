@@ -127,7 +127,8 @@ pub fn run() {
             let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale3.dtp", "test/2-msg/", "conversion_tests");
             let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale4.dtp", "test/2-msg/", "conversion_tests");
             let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale5.dtp", "test/2-msg/", "conversion_tests");
-            let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale6.dtp", "test/2-msg/", "conversion_tests");
+            let debug1 = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale6.dtp", "test/2-msg/", "conversion_tests");
+            debug!("{debug1:?}");
             let _ = convert_to_msg("test/1-dtp/ROS2_conversiontests_msg_Ros2Standardwertliterale7.dtp", "test/2-msg/", "conversion_tests");
             Ok(())
         }

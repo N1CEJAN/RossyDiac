@@ -1,24 +1,32 @@
 use crate::business::error::Result;
+use crate::core::dtp::{
+    ANNOTATION_NAME_ROS2_ABSOLUTE_REFERENCE, ANNOTATION_NAME_ROS2_BOUND_DYNAMIC_ARRAY,
+    ANNOTATION_NAME_ROS2_CONSTANT, ANNOTATION_NAME_ROS2_DYNAMIC_ARRAY,
+    ANNOTATION_NAME_ROS2_ELEMENT_COUNTER, ANNOTATION_NAME_ROS2_RELATIVE_REFERENCE,
+};
+use crate::core::msg::{
+    ANNOTATION_NAME_IEC61499_WORD, ANNOTATION_NAME_IEC61499_DWORD, 
+    ANNOTATION_NAME_IEC61499_LWORD, ANNOTATION_NAME_IEC61499_START_INDEX, 
+};
 use crate::core::{dtp, msg};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::digit1;
 use nom::combinator::{map_res, opt, recognize};
 use nom::sequence::{delimited, tuple};
-use nom::{Finish, IResult};
+use nom::Finish;
 
 const ELEMENT_COUNTER_SUFFIX: &'static str = "_element_counter";
 
 pub fn convert(package_name: &str, structured_type: &msg::StructuredType) -> Result<dtp::DataType> {
     let name = convert_structured_type_name(package_name, structured_type.name());
     let mut structured_type_children = Vec::new();
-    for field in structured_type.fields().iter() {
+    for field in structured_type.fields().into_iter() {
         let children = &mut convert_field(package_name, field)?;
         structured_type_children.append(children)
     }
-    let structured_type = dtp::StructuredType::new(&None, &structured_type_children);
-    let data_type_kind = dtp::DataTypeKind::StructuredType(structured_type);
-    Ok(dtp::DataType::new(&name, &None, &data_type_kind))
+    let structured_type = dtp::StructuredType::new(None, structured_type_children);
+    Ok(dtp::DataType::new(name, None, structured_type))
 }
 
 fn convert_structured_type_name(package_name: &str, structured_type_name: &str) -> String {
@@ -29,50 +37,77 @@ fn convert_structured_type_name(package_name: &str, structured_type_name: &str) 
     format!("ROS2_{package_name}_msg_{structured_type_name}")
 }
 
-fn convert_field(package_name: &str, field: &msg::Field) -> Result<Vec<dtp::StructuredTypeChild>> {
-    let mut structured_type_children = Vec::new();
+fn convert_field(package_name: &str, field: &msg::Field) -> Result<Vec<dtp::VarDeclaration>> {
+    let mut var_declarations = Vec::new();
 
     let var_name = convert_to_var_name(field)?;
-    let base_type = convert_to_var_base_type(package_name, field);
-    let array_size = convert_to_var_optional_array_size(field)?;
-    let initial_value = convert_to_var_optional_initial_value(field)?;
-    let comment = convert_to_var_comment(field)?;
-    let attributes = convert_to_attributes(field)?;
-    structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(
-        dtp::VarDeclaration::new(
-            &var_name,
-            &base_type,
-            &array_size,
-            &initial_value,
-            &comment,
-            &attributes,
-        ),
+    var_declarations.push(dtp::VarDeclaration::new(
+        var_name.clone(),
+        convert_to_var_base_type(package_name, field),
+        convert_to_dtp_optional_array_size(field)?,
+        convert_to_dtp_optional_initial_value(field)?,
+        convert_to_var_comment(field)?,
+        convert_to_attributes(field)?,
     ));
 
-    if let Some(msg::Constraint::BoundedDynamicArray(_))
-    | Some(msg::Constraint::UnboundedDynamicArray) = field.constraint()
+    if let Some(msg::ArraySize::BoundDynamic(_)) | Some(msg::ArraySize::Dynamic) =
+        field.array_size()
     {
         let default_count = compute_element_counter_default_count(field);
-        structured_type_children.push(dtp::StructuredTypeChild::VarDeclaration(
-            dtp::VarDeclaration::new(
-                &format!("{var_name}{ELEMENT_COUNTER_SUFFIX}"),
-                &dtp::BaseType::ULINT,
-                &None,
-                &Some(dtp::InitialValue::ULINT(
-                    dtp::IntLiteral::UnsignedDecimalInt(default_count),
-                )),
-                &None,
-                &vec![dtp::Attribute {
-                    name: "ROS2_ElementCounter".to_string(),
-                    base_type: dtp::BaseType::STRING(None),
-                    value: dtp::InitialValue::STRING(field.name().to_string()),
-                    comment: None,
-                }],
-            ),
+        var_declarations.push(dtp::VarDeclaration::new(
+            format!("{var_name}{ELEMENT_COUNTER_SUFFIX}"),
+            dtp::BaseType::ULINT,
+            None,
+            Some(dtp::InitialValue::ULINT(
+                dtp::IntRepresentation::UnsignedDecimal(default_count),
+            )),
+            None,
+            vec![dtp::Attribute::new(
+                ANNOTATION_NAME_ROS2_ELEMENT_COUNTER.to_owned(),
+                dtp::BaseType::STRING(None),
+                dtp::InitialValue::STRING(
+                    field
+                        .name()
+                        .chars()
+                        .map(|char| dtp::CharRepresentation::Char(char))
+                        .collect::<Vec<_>>(),
+                ),
+                None,
+            )],
         ));
     };
 
-    Ok(structured_type_children)
+    Ok(var_declarations)
+}
+
+fn convert_to_var_name(field: &msg::Field) -> Result<String> {
+    Ok(field.name().to_string())
+}
+
+fn convert_to_var_base_type(package_name: &str, field: &msg::Field) -> dtp::BaseType {
+    match field.base_type() {
+        msg::BaseType::Bool => dtp::BaseType::BOOL,
+        msg::BaseType::Byte => dtp::BaseType::BYTE,
+        msg::BaseType::Uint16 if is_word(field) => dtp::BaseType::WORD,
+        msg::BaseType::Uint32 if is_dword(field) => dtp::BaseType::DWORD,
+        msg::BaseType::Uint64 if is_lword(field) => dtp::BaseType::LWORD,
+        msg::BaseType::Int8 => dtp::BaseType::SINT,
+        msg::BaseType::Int16 => dtp::BaseType::INT,
+        msg::BaseType::Int32 => dtp::BaseType::DINT,
+        msg::BaseType::Int64 => dtp::BaseType::LINT,
+        msg::BaseType::Uint8 => dtp::BaseType::USINT,
+        msg::BaseType::Uint16 => dtp::BaseType::UINT,
+        msg::BaseType::Uint32 => dtp::BaseType::UDINT,
+        msg::BaseType::Uint64 => dtp::BaseType::ULINT,
+        msg::BaseType::Float32 => dtp::BaseType::REAL,
+        msg::BaseType::Float64 => dtp::BaseType::LREAL,
+        msg::BaseType::Char => dtp::BaseType::CHAR,
+        msg::BaseType::String(opt_bound) => dtp::BaseType::STRING(opt_bound.clone()),
+        msg::BaseType::Wstring(opt_bound) => dtp::BaseType::WSTRING(opt_bound.clone()),
+        msg::BaseType::Custom(reference) => {
+            dtp::BaseType::Custom(convert_reference(package_name, reference))
+        }
+    }
 }
 
 fn convert_to_var_comment(field: &msg::Field) -> Result<Option<String>> {
@@ -102,171 +137,78 @@ fn convert_to_var_comment(field: &msg::Field) -> Result<Option<String>> {
 }
 
 fn compute_element_counter_default_count(field: &msg::Field) -> u64 {
-    match field.field_type() {
-        msg::FieldType::Variable(Some(msg::InitialValue::Array(initial_value)))
-        | msg::FieldType::Constant(msg::InitialValue::Array(initial_value)) => {
-            initial_value.len() as u64
-        }
-        _ => 0,
+    if let Some(msg::InitialValue::Array(array)) = field.initial_value() {
+        array.len() as u64
+    } else {
+        0
     }
 }
 
 fn convert_to_attributes(field: &msg::Field) -> Result<Vec<dtp::Attribute>> {
     let mut attributes = Vec::new();
-    if let Some(msg::Constraint::UnboundedDynamicArray) = field.constraint() {
-        attributes.push(dtp::Attribute {
-            name: "ROS2_DynamicArray".to_string(),
-            base_type: dtp::BaseType::BOOL,
-            value: dtp::InitialValue::BOOL(dtp::BoolLiteral::Int(true)),
-            comment: None,
-        })
-    }
-    if let Some(msg::Constraint::BoundedDynamicArray(bound)) = field.constraint() {
-        attributes.push(dtp::Attribute {
-            name: "ROS2_BoundDynamicArray".to_string(),
-            base_type: dtp::BaseType::ULINT,
-            value: dtp::InitialValue::ULINT(dtp::IntLiteral::UnsignedDecimalInt(*bound as u64)),
-            comment: None,
-        })
-    }
-    if let msg::FieldType::Constant(_) = field.field_type() {
-        attributes.push(dtp::Attribute {
-            name: "ROS2_CONSTANT".to_string(),
-            base_type: dtp::BaseType::BOOL,
-            value: dtp::InitialValue::BOOL(dtp::BoolLiteral::Int(true)),
-            comment: None,
-        })
-    }
     if let msg::BaseType::Custom(msg::Reference::Relative { .. }) = field.base_type() {
-        attributes.push(dtp::Attribute {
-            name: "ROS2_RelativeReference".to_string(),
-            base_type: dtp::BaseType::BOOL,
-            value: dtp::InitialValue::BOOL(dtp::BoolLiteral::Int(true)),
-            comment: None,
-        })
+        attributes.push(dtp::Attribute::new(
+            ANNOTATION_NAME_ROS2_RELATIVE_REFERENCE.to_owned(),
+            dtp::BaseType::BOOL,
+            dtp::InitialValue::BOOL(dtp::BoolRepresentation::Binary(true)),
+            None,
+        ))
     }
     if let msg::BaseType::Custom(msg::Reference::Absolute { .. }) = field.base_type() {
-        attributes.push(dtp::Attribute {
-            name: "ROS2_AbsoluteReference".to_string(),
-            base_type: dtp::BaseType::BOOL,
-            value: dtp::InitialValue::BOOL(dtp::BoolLiteral::Int(true)),
-            comment: None,
-        })
+        attributes.push(dtp::Attribute::new(
+            ANNOTATION_NAME_ROS2_ABSOLUTE_REFERENCE.to_owned(),
+            dtp::BaseType::BOOL,
+            dtp::InitialValue::BOOL(dtp::BoolRepresentation::Binary(true)),
+            None,
+        ))
+    }
+    if let Some(msg::ArraySize::Dynamic) = field.array_size() {
+        attributes.push(dtp::Attribute::new(
+            ANNOTATION_NAME_ROS2_DYNAMIC_ARRAY.to_owned(),
+            dtp::BaseType::BOOL,
+            dtp::InitialValue::BOOL(dtp::BoolRepresentation::Binary(true)),
+            None,
+        ))
+    }
+    if let Some(msg::ArraySize::BoundDynamic(bound)) = field.array_size() {
+        attributes.push(dtp::Attribute::new(
+            ANNOTATION_NAME_ROS2_BOUND_DYNAMIC_ARRAY.to_owned(),
+            dtp::BaseType::ULINT,
+            dtp::InitialValue::ULINT(dtp::IntRepresentation::UnsignedDecimal(*bound as u64)),
+            None,
+        ))
+    }
+    if let msg::FieldType::Constant = field.field_type() {
+        attributes.push(dtp::Attribute::new(
+            ANNOTATION_NAME_ROS2_CONSTANT.to_owned(),
+            dtp::BaseType::BOOL,
+            dtp::InitialValue::BOOL(dtp::BoolRepresentation::Binary(true)),
+            None,
+        ))
     }
     Ok(attributes)
 }
 
-fn convert_to_var_name(field: &msg::Field) -> Result<String> {
-    Ok(field.name().to_string())
-}
-
-fn convert_to_var_base_type(package_name: &str, field: &msg::Field) -> dtp::BaseType {
-    match field.base_type() {
-        msg::BaseType::Bool => dtp::BaseType::BOOL,
-        msg::BaseType::Byte => dtp::BaseType::BYTE,
-        msg::BaseType::Uint16 if is_word(field) => dtp::BaseType::WORD,
-        msg::BaseType::Uint32 if is_dword(field) => dtp::BaseType::DWORD,
-        msg::BaseType::Uint64 if is_lword(field) => dtp::BaseType::LWORD,
-        msg::BaseType::Int8 => dtp::BaseType::SINT,
-        msg::BaseType::Int16 => dtp::BaseType::INT,
-        msg::BaseType::Int32 => dtp::BaseType::DINT,
-        msg::BaseType::Int64 => dtp::BaseType::LINT,
-        msg::BaseType::Uint8 => dtp::BaseType::USINT,
-        msg::BaseType::Uint16 => dtp::BaseType::UINT,
-        msg::BaseType::Uint32 => dtp::BaseType::UDINT,
-        msg::BaseType::Uint64 => dtp::BaseType::ULINT,
-        msg::BaseType::Float32 => dtp::BaseType::REAL,
-        msg::BaseType::Float64 => dtp::BaseType::LREAL,
-        msg::BaseType::Char => dtp::BaseType::CHAR,
-        msg::BaseType::String(opt_bound) => dtp::BaseType::STRING(opt_bound.clone()),
-        msg::BaseType::Wstring(opt_bound) => dtp::BaseType::WSTRING(opt_bound.clone()),
-        msg::BaseType::Custom(a_ref) => {
-            dtp::BaseType::Custom(convert_reference(package_name, a_ref))
-        }
-    }
-}
-
-fn is_word(field: &msg::Field) -> bool {
-    field
-        .comment()
-        .is_some_and(|comment| comment.contains("@IEC61499_WORD"))
-}
-
-fn is_dword(field: &msg::Field) -> bool {
-    field
-        .comment()
-        .is_some_and(|comment| comment.contains("@IEC61499_DWORD"))
-}
-
-fn is_lword(field: &msg::Field) -> bool {
-    field
-        .comment()
-        .is_some_and(|comment| comment.contains("@IEC61499_LWORD"))
-}
-
-fn is_shifted_static_array(field: &msg::Field) -> bool {
-    field
-        .comment()
-        .is_some_and(|comment| comment.contains("@IEC61499_StartIndex"))
-}
-
-fn get_start_index(field: &msg::Field) -> Result<i64> {
-    field
-        .comment()
-        .and_then(|comment| {
-            comment
-                .find("@IEC61499_StartIndex(")
-                .map(|pos| &comment[pos..])
-        })
-        .map_or(Ok(0), |input| {
-            Ok(parse_start_index(input)
-                .map_err(|err| err.to_owned())
-                .finish()?
-                .1)
-        })
-}
-
-fn parse_start_index(input: &str) -> IResult<&str, i64> {
-    map_res(
-        delimited(
-            tag("@IEC61499_StartIndex("),
-            recognize(tuple((opt(alt((tag("-"), tag("+")))), digit1))),
-            tag(")"),
-        ),
-        |str: &str| i64::from_str_radix(str, 10),
-    )(input)
-}
-
-fn convert_to_var_optional_array_size(field: &msg::Field) -> Result<Option<dtp::ArraySize>> {
-    Ok(match field.constraint() {
-        Some(msg::Constraint::StaticArray(capacity)) if is_shifted_static_array(field) => {
+fn convert_to_dtp_optional_array_size(field: &msg::Field) -> Result<Option<dtp::ArraySize>> {
+    Ok(match field.array_size() {
+        Some(msg::ArraySize::Capacity(capacity)) if is_shifted_static_array(field) => {
             let start = get_start_index(field)?;
             let end = start + (*capacity as i64) - 1;
-            Some(dtp::ArraySize::Static(dtp::Capacity::Shifted(start, end)))
+            Some(dtp::ArraySize::Indexation(start, end))
         }
-        Some(msg::Constraint::StaticArray(capacity)) => {
-            Some(dtp::ArraySize::Static(dtp::Capacity::InPlace(*capacity)))
-        }
-        Some(msg::Constraint::UnboundedDynamicArray) => {
-            Some(dtp::ArraySize::Static(dtp::Capacity::InPlace(3)))
-        }
-        Some(msg::Constraint::BoundedDynamicArray(bound)) => {
-            Some(dtp::ArraySize::Static(dtp::Capacity::InPlace(*bound)))
-        }
+        Some(msg::ArraySize::Capacity(capacity)) => Some(dtp::ArraySize::Capacity(*capacity)),
+        Some(msg::ArraySize::Dynamic) => Some(dtp::ArraySize::Capacity(3)),
+        Some(msg::ArraySize::BoundDynamic(bound)) => Some(dtp::ArraySize::Capacity(*bound)),
         None => None,
     })
 }
 
-fn convert_to_var_optional_initial_value(field: &msg::Field) -> Result<Option<dtp::InitialValue>> {
-    let optional_initial_value = match field.field_type() {
-        msg::FieldType::Variable(optional_initial_value) => optional_initial_value.as_ref(),
-        msg::FieldType::Constant(initial_value) => Some(initial_value),
-    };
-
-    match optional_initial_value {
-        Some(initial_value) => Ok(Some(convert_initial_value(initial_value, field)?)),
-        None => Ok(None),
-    }
+fn convert_to_dtp_optional_initial_value(field: &msg::Field) -> Result<Option<dtp::InitialValue>> {
+    Ok(if let Some(msg_initial_value) = field.initial_value() {
+        Some(convert_initial_value(msg_initial_value, field)?)
+    } else {
+        None
+    })
 }
 
 fn convert_reference(package_name: &str, reference: &msg::Reference) -> String {
@@ -281,38 +223,59 @@ fn convert_initial_value(
     field: &msg::Field,
 ) -> Result<dtp::InitialValue> {
     Ok(match initial_value {
-        msg::InitialValue::Bool(v) => dtp::InitialValue::BOOL(convert_bool_literal(v)),
-        msg::InitialValue::Float32(v) => dtp::InitialValue::REAL(*v),
-        msg::InitialValue::Float64(v) => dtp::InitialValue::LREAL(*v),
-        msg::InitialValue::Int8(v) => dtp::InitialValue::SINT(convert_int_literal(v)),
-        msg::InitialValue::Uint8(v) => dtp::InitialValue::USINT(convert_int_literal(v)),
-        msg::InitialValue::Int16(v) => dtp::InitialValue::INT(convert_int_literal(v)),
-        msg::InitialValue::Uint16(v) => dtp::InitialValue::UINT(convert_int_literal(v)),
-        msg::InitialValue::Int32(v) => dtp::InitialValue::DINT(convert_int_literal(v)),
-        msg::InitialValue::Uint32(v) => dtp::InitialValue::UDINT(convert_int_literal(v)),
-        msg::InitialValue::Int64(v) => dtp::InitialValue::LINT(convert_int_literal(v)),
-        msg::InitialValue::Uint64(v) => dtp::InitialValue::ULINT(convert_int_literal(v)),
-        msg::InitialValue::Byte(v) if is_word(field) => {
-            dtp::InitialValue::WORD(convert_int_literal(v))
+        msg::InitialValue::Bool(bool_representation) => {
+            dtp::InitialValue::BOOL(convert_bool_representation(bool_representation))
         }
-        msg::InitialValue::Byte(v) if is_dword(field) => {
-            dtp::InitialValue::DWORD(convert_int_literal(v))
+        msg::InitialValue::Byte(int_representation) => {
+            dtp::InitialValue::BYTE(convert_int_representation(int_representation))
         }
-        msg::InitialValue::Byte(v) if is_lword(field) => {
-            dtp::InitialValue::LWORD(convert_int_literal(v))
+        msg::InitialValue::Uint8(int_representation) => {
+            dtp::InitialValue::USINT(convert_int_representation(int_representation))
         }
-        msg::InitialValue::Byte(v) => dtp::InitialValue::BYTE(convert_int_literal(v)),
-        msg::InitialValue::Char(v) => dtp::InitialValue::CHAR(convert_to_char_literal(v)?),
-        msg::InitialValue::String(v) => {
-            dtp::InitialValue::STRING(v.replace("'", "$'").replace("\"", "&quot;"))
+        msg::InitialValue::Uint16(int_representation) => {
+            dtp::InitialValue::UINT(convert_int_representation(int_representation))
         }
-        msg::InitialValue::Wstring(v) => dtp::InitialValue::WSTRING(v.replace("\"", "$&quot;")),
+        msg::InitialValue::Uint32(int_representation) => {
+            dtp::InitialValue::UDINT(convert_int_representation(int_representation))
+        }
+        msg::InitialValue::Uint64(int_representation) => {
+            dtp::InitialValue::ULINT(convert_int_representation(int_representation))
+        }
+        msg::InitialValue::Int8(int_representation) => {
+            dtp::InitialValue::SINT(convert_int_representation(int_representation))
+        }
+        msg::InitialValue::Int16(int_representation) => {
+            dtp::InitialValue::INT(convert_int_representation(int_representation))
+        }
+        msg::InitialValue::Int32(int_representation) => {
+            dtp::InitialValue::DINT(convert_int_representation(int_representation))
+        }
+        msg::InitialValue::Int64(int_representation) => {
+            dtp::InitialValue::LINT(convert_int_representation(int_representation))
+        }
+        msg::InitialValue::Float32(f32) => dtp::InitialValue::REAL(*f32),
+        msg::InitialValue::Float64(f64) => dtp::InitialValue::LREAL(*f64),
+        msg::InitialValue::Char(int_representation) => {
+            dtp::InitialValue::CHAR(convert_int_to_char_representation(int_representation)?)
+        }
+        msg::InitialValue::String(string) => dtp::InitialValue::STRING(
+            string
+                .chars()
+                .map(|char| dtp::CharRepresentation::Char(char))
+                .collect::<Vec<_>>(),
+        ),
+        msg::InitialValue::Wstring(string) => dtp::InitialValue::WSTRING(
+            string
+                .chars()
+                .map(|char| dtp::WcharRepresentation::Wchar(char))
+                .collect::<Vec<_>>(),
+        ),
         msg::InitialValue::Array(v) => {
             // Determine new capacity based on field constraint
-            let new_capacity = match field.constraint() {
-                Some(msg::Constraint::BoundedDynamicArray(capacity)) => *capacity,
-                Some(msg::Constraint::UnboundedDynamicArray) => 3,
-                _ => v.len(),
+            let new_capacity = match field.array_size() {
+                Some(msg::ArraySize::BoundDynamic(capacity)) => *capacity,
+                Some(msg::ArraySize::Dynamic) => 3,
+                _ => v.len() as u64,
             };
 
             // Convert initial values
@@ -322,11 +285,11 @@ fn convert_initial_value(
                 .collect::<Result<Vec<_>>>()?;
 
             // Add filler values as needed
-            if new_capacity > vec.len() {
+            if new_capacity > vec.len() as u64 {
                 let sample_initial_value = v.iter().next();
                 vec.extend(vec![
                     create_filler_initial_value(field, sample_initial_value);
-                    new_capacity - vec.len()
+                    new_capacity as usize - vec.len()
                 ]);
             }
 
@@ -340,135 +303,183 @@ fn create_filler_initial_value(
     sample_initial_value: Option<&msg::InitialValue>,
 ) -> dtp::InitialValue {
     sample_initial_value.map_or_else(
-        || create_default_initial_value(field),
+        || match field.base_type() {
+            msg::BaseType::Bool => dtp::InitialValue::BOOL(create_default_bool_representation()),
+            msg::BaseType::Byte => dtp::InitialValue::BYTE(create_default_int_representation()),
+            msg::BaseType::Uint16 if is_word(field) => dtp::InitialValue::WORD(create_default_int_representation()),
+            msg::BaseType::Uint32 if is_dword(field) => dtp::InitialValue::DWORD(create_default_int_representation()),
+            msg::BaseType::Uint64 if is_lword(field) => dtp::InitialValue::LWORD(create_default_int_representation()),
+            msg::BaseType::Uint8 => dtp::InitialValue::USINT(create_default_int_representation()),
+            msg::BaseType::Uint16 => dtp::InitialValue::UINT(create_default_int_representation()),
+            msg::BaseType::Uint32 => dtp::InitialValue::UDINT(create_default_int_representation()),
+            msg::BaseType::Uint64 => dtp::InitialValue::ULINT(create_default_int_representation()),
+            msg::BaseType::Int8 => dtp::InitialValue::SINT(create_default_int_representation()),
+            msg::BaseType::Int16 => dtp::InitialValue::INT(create_default_int_representation()),
+            msg::BaseType::Int32 => dtp::InitialValue::DINT(create_default_int_representation()),
+            msg::BaseType::Int64 => dtp::InitialValue::LINT(create_default_int_representation()),
+            msg::BaseType::Float32 => dtp::InitialValue::REAL(create_default_real_representation()),
+            msg::BaseType::Float64 => dtp::InitialValue::LREAL(create_default_lreal_representation()),
+            msg::BaseType::Char => dtp::InitialValue::CHAR(create_default_char_representation()),
+            msg::BaseType::String(_) => dtp::InitialValue::STRING(create_default_string_representation()),
+            msg::BaseType::Wstring(_) => dtp::InitialValue::WSTRING(create_default_wstring_representation()),
+            msg::BaseType::Custom(_) => unimplemented!(),
+        },
         |sample_initial_value| match sample_initial_value {
-            msg::InitialValue::Bool(literal) => {
-                dtp::InitialValue::BOOL(create_filler_bool_literal(Some(literal)))
-            }
-            msg::InitialValue::Byte(literal) => {
-                dtp::InitialValue::BYTE(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Uint16(literal) if is_word(field) => {
-                dtp::InitialValue::WORD(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Uint32(literal) if is_dword(field) => {
-                dtp::InitialValue::DWORD(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Uint64(literal) if is_lword(field) => {
-                dtp::InitialValue::LWORD(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Uint8(literal) => {
-                dtp::InitialValue::USINT(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Uint16(literal) => {
-                dtp::InitialValue::UINT(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Uint32(literal) => {
-                dtp::InitialValue::UDINT(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Uint64(literal) => {
-                dtp::InitialValue::ULINT(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Int8(literal) => {
-                dtp::InitialValue::SINT(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Int16(literal) => {
-                dtp::InitialValue::INT(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Int32(literal) => {
-                dtp::InitialValue::DINT(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Int64(literal) => {
-                dtp::InitialValue::LINT(create_filler_int_literal(Some(literal)))
-            }
-            msg::InitialValue::Float32(_) => dtp::InitialValue::REAL(0f32),
-            msg::InitialValue::Float64(_) => dtp::InitialValue::LREAL(0f64),
-            msg::InitialValue::Char(_) => dtp::InitialValue::CHAR(create_filler_char_literal()),
-            msg::InitialValue::String(_) => dtp::InitialValue::STRING(String::new()),
-            msg::InitialValue::Wstring(_) => dtp::InitialValue::WSTRING(String::new()),
+            msg::InitialValue::Bool(reference) => dtp::InitialValue::BOOL(create_default_bool_representation_from_reference(reference)),
+            msg::InitialValue::Byte(reference) => dtp::InitialValue::BYTE(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Uint16(reference) if is_word(field) => dtp::InitialValue::WORD(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Uint32(reference) if is_dword(field) => dtp::InitialValue::DWORD(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Uint64(reference) if is_lword(field) => dtp::InitialValue::LWORD(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Uint8(reference) => dtp::InitialValue::USINT(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Uint16(reference) => dtp::InitialValue::UINT(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Uint32(reference) => dtp::InitialValue::UDINT(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Uint64(reference) => dtp::InitialValue::ULINT(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Int8(reference) => dtp::InitialValue::SINT(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Int16(reference) => dtp::InitialValue::INT(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Int32(reference) => dtp::InitialValue::DINT(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Int64(reference) => dtp::InitialValue::LINT(create_default_int_representation_from_reference(reference)),
+            msg::InitialValue::Float32(_) => dtp::InitialValue::REAL(create_default_real_representation()),
+            msg::InitialValue::Float64(_) => dtp::InitialValue::LREAL(create_default_lreal_representation()),
+            msg::InitialValue::Char(_) => dtp::InitialValue::CHAR(create_default_char_representation()),
+            msg::InitialValue::String(_) => dtp::InitialValue::STRING(create_default_string_representation()),
+            msg::InitialValue::Wstring(_) => dtp::InitialValue::WSTRING(create_default_wstring_representation()),
             msg::InitialValue::Array(_) => unimplemented!(),
         },
     )
 }
 
-fn create_default_initial_value(field: &msg::Field) -> dtp::InitialValue {
-    match field.base_type() {
-        msg::BaseType::Bool => dtp::InitialValue::BOOL(create_filler_bool_literal(None)),
-        msg::BaseType::Byte => dtp::InitialValue::BYTE(create_filler_int_literal(None)),
-        msg::BaseType::Uint16 if is_word(field) => {
-            dtp::InitialValue::WORD(create_filler_int_literal(None))
+
+fn create_default_bool_representation() -> dtp::BoolRepresentation {
+    dtp::BoolRepresentation::String(false)
+}
+
+fn create_default_int_representation() -> dtp::IntRepresentation {
+    dtp::IntRepresentation::UnsignedDecimal(0)
+}
+
+fn create_default_real_representation() -> f32 {
+    0f32
+}
+
+fn create_default_lreal_representation() -> f64 {
+    0f64
+}
+
+fn create_default_char_representation() -> dtp::CharRepresentation {
+    dtp::CharRepresentation::Char('0')
+}
+
+fn create_default_string_representation() -> Vec<dtp::CharRepresentation> {
+    Vec::new()
+}
+
+fn create_default_wstring_representation() -> Vec<dtp::WcharRepresentation> {
+    Vec::new()
+}
+
+fn create_default_bool_representation_from_reference(
+    reference: &msg::BoolRepresentation,
+) -> dtp::BoolRepresentation {
+    match reference {
+        msg::BoolRepresentation::String(_) => dtp::BoolRepresentation::String(false),
+        msg::BoolRepresentation::Binary(_) => dtp::BoolRepresentation::Binary(false),
+    }
+}
+
+fn create_default_int_representation_from_reference(
+    reference: &msg::IntRepresentation,
+) -> dtp::IntRepresentation {
+    match reference {
+        msg::IntRepresentation::SignedDecimal(_) => dtp::IntRepresentation::SignedDecimal(0),
+        msg::IntRepresentation::UnsignedDecimal(_) => dtp::IntRepresentation::UnsignedDecimal(0),
+        msg::IntRepresentation::Binary(_) => dtp::IntRepresentation::Binary(0),
+        msg::IntRepresentation::Octal(_) => dtp::IntRepresentation::Octal(0),
+        msg::IntRepresentation::Hexadecimal(_) => dtp::IntRepresentation::Heaxdecimal(0),
+    }
+}
+
+fn convert_bool_representation(
+    bool_representation: &msg::BoolRepresentation,
+) -> dtp::BoolRepresentation {
+    match bool_representation {
+        msg::BoolRepresentation::String(bool) => dtp::BoolRepresentation::String(*bool),
+        msg::BoolRepresentation::Binary(bool) => dtp::BoolRepresentation::Binary(*bool),
+    }
+}
+
+fn convert_int_representation(
+    int_representation: &msg::IntRepresentation,
+) -> dtp::IntRepresentation {
+    match int_representation {
+        msg::IntRepresentation::SignedDecimal(i64) => dtp::IntRepresentation::SignedDecimal(*i64),
+        msg::IntRepresentation::UnsignedDecimal(u64) => {
+            dtp::IntRepresentation::UnsignedDecimal(*u64)
         }
-        msg::BaseType::Uint32 if is_dword(field) => {
-            dtp::InitialValue::DWORD(create_filler_int_literal(None))
-        }
-        msg::BaseType::Uint64 if is_lword(field) => {
-            dtp::InitialValue::LWORD(create_filler_int_literal(None))
-        }
-        msg::BaseType::Uint8 => dtp::InitialValue::USINT(create_filler_int_literal(None)),
-        msg::BaseType::Uint16 => dtp::InitialValue::UINT(create_filler_int_literal(None)),
-        msg::BaseType::Uint32 => dtp::InitialValue::UDINT(create_filler_int_literal(None)),
-        msg::BaseType::Uint64 => dtp::InitialValue::ULINT(create_filler_int_literal(None)),
-        msg::BaseType::Int8 => dtp::InitialValue::SINT(create_filler_int_literal(None)),
-        msg::BaseType::Int16 => dtp::InitialValue::INT(create_filler_int_literal(None)),
-        msg::BaseType::Int32 => dtp::InitialValue::DINT(create_filler_int_literal(None)),
-        msg::BaseType::Int64 => dtp::InitialValue::LINT(create_filler_int_literal(None)),
-        msg::BaseType::Float32 => dtp::InitialValue::REAL(0f32),
-        msg::BaseType::Float64 => dtp::InitialValue::LREAL(0f64),
-        msg::BaseType::Char => dtp::InitialValue::CHAR(create_filler_char_literal()),
-        msg::BaseType::String(_) => dtp::InitialValue::STRING(String::new()),
-        msg::BaseType::Wstring(_) => dtp::InitialValue::WSTRING(String::new()),
-        msg::BaseType::Custom(_) => unimplemented!(),
+        msg::IntRepresentation::Binary(u64) => dtp::IntRepresentation::Binary(*u64),
+        msg::IntRepresentation::Octal(u64) => dtp::IntRepresentation::Octal(*u64),
+        msg::IntRepresentation::Hexadecimal(u64) => dtp::IntRepresentation::Heaxdecimal(*u64),
     }
 }
 
-fn create_filler_char_literal() -> dtp::CharLiteral {
-    dtp::CharLiteral::Hex(std::char::from_u32(0u32).expect("casting 0u32 to char literal to work"))
+fn convert_int_to_char_representation(
+    int_representation: &msg::IntRepresentation,
+) -> Result<dtp::CharRepresentation> {
+    Ok(dtp::CharRepresentation::Char(match int_representation {
+        msg::IntRepresentation::SignedDecimal(value) => i64_to_char(value),
+        msg::IntRepresentation::UnsignedDecimal(value)
+        | msg::IntRepresentation::Binary(value)
+        | msg::IntRepresentation::Octal(value)
+        | msg::IntRepresentation::Hexadecimal(value) => u64_to_char(value),
+    }?))
 }
 
-fn create_filler_bool_literal(reference_literal: Option<&msg::BoolLiteral>) -> dtp::BoolLiteral {
-    match reference_literal {
-        Some(msg::BoolLiteral::String(_)) => dtp::BoolLiteral::String(false),
-        Some(msg::BoolLiteral::Int(_)) => dtp::BoolLiteral::Int(false),
-        None => dtp::BoolLiteral::String(false),
-    }
+fn get_start_index(field: &msg::Field) -> Result<i64> {
+    field
+        .comment()
+        .and_then(|comment| {
+            comment
+                .find(format!("@{ANNOTATION_NAME_IEC61499_START_INDEX}(").as_str())
+                .map(|pos| &comment[pos..])
+        })
+        .map_or(Ok(0), |input| parse_start_index(input))
 }
 
-fn create_filler_int_literal(reference_literal: Option<&msg::IntLiteral>) -> dtp::IntLiteral {
-    match reference_literal {
-        Some(msg::IntLiteral::SignedDecimalInt(_)) => dtp::IntLiteral::SignedDecimalInt(0),
-        Some(msg::IntLiteral::UnsignedDecimalInt(_)) => dtp::IntLiteral::UnsignedDecimalInt(0),
-        Some(msg::IntLiteral::BinaryInt(_)) => dtp::IntLiteral::BinaryInt(0),
-        Some(msg::IntLiteral::OctalInt(_)) => dtp::IntLiteral::OctalInt(0),
-        Some(msg::IntLiteral::HexalInt(_)) => dtp::IntLiteral::HexalInt(0),
-        None => dtp::IntLiteral::UnsignedDecimalInt(0),
-    }
+fn parse_start_index(input: &str) -> Result<i64> {
+    Ok(map_res(
+        delimited(
+            tag(format!("@{ANNOTATION_NAME_IEC61499_START_INDEX}(").as_str()),
+            recognize(tuple((opt(alt((tag("-"), tag("+")))), digit1))),
+            tag(")"),
+        ),
+        |str: &str| i64::from_str_radix(str, 10),
+    )(input)
+    .map_err(|e: nom::Err<nom::error::Error<&str>>| e.to_owned())
+    .finish()?
+    .1)
 }
 
-fn convert_bool_literal(bool_literal: &msg::BoolLiteral) -> dtp::BoolLiteral {
-    match bool_literal {
-        msg::BoolLiteral::String(bool) => dtp::BoolLiteral::String(*bool),
-        msg::BoolLiteral::Int(bool) => dtp::BoolLiteral::Int(*bool),
-    }
+fn is_word(field: &msg::Field) -> bool {
+    field
+        .comment()
+        .is_some_and(|comment| comment.contains(format!("@{ANNOTATION_NAME_IEC61499_WORD}").as_str()))
 }
 
-fn convert_to_char_literal(int_literal: &msg::IntLiteral) -> Result<dtp::CharLiteral> {
-    Ok(match int_literal {
-        msg::IntLiteral::SignedDecimalInt(i64) => dtp::CharLiteral::Hex(i64_to_char(i64)?),
-        msg::IntLiteral::UnsignedDecimalInt(u64)
-        | msg::IntLiteral::BinaryInt(u64)
-        | msg::IntLiteral::OctalInt(u64)
-        | msg::IntLiteral::HexalInt(u64) => dtp::CharLiteral::Hex(u64_to_char(u64)?),
-    })
+fn is_dword(field: &msg::Field) -> bool {
+    field
+        .comment()
+        .is_some_and(|comment| comment.contains(format!("@{ANNOTATION_NAME_IEC61499_DWORD}").as_str()))
 }
 
-fn convert_int_literal(int_literal: &msg::IntLiteral) -> dtp::IntLiteral {
-    match int_literal {
-        msg::IntLiteral::SignedDecimalInt(i64) => dtp::IntLiteral::SignedDecimalInt(*i64),
-        msg::IntLiteral::UnsignedDecimalInt(u64) => dtp::IntLiteral::UnsignedDecimalInt(*u64),
-        msg::IntLiteral::BinaryInt(u64) => dtp::IntLiteral::BinaryInt(*u64),
-        msg::IntLiteral::OctalInt(u64) => dtp::IntLiteral::OctalInt(*u64),
-        msg::IntLiteral::HexalInt(u64) => dtp::IntLiteral::HexalInt(*u64),
-    }
+fn is_lword(field: &msg::Field) -> bool {
+    field
+        .comment()
+        .is_some_and(|comment| comment.contains(format!("@{ANNOTATION_NAME_IEC61499_LWORD}").as_str()))
+}
+
+fn is_shifted_static_array(field: &msg::Field) -> bool {
+    field
+        .comment()
+        .is_some_and(|comment| comment.contains(format!("@{ANNOTATION_NAME_IEC61499_START_INDEX}").as_str()))
 }
 
 fn i64_to_char(value: &i64) -> Result<char> {

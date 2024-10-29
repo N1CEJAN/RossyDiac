@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <DataType Name="Iec61499PrimitiveDatentypen">
-	<StructuredType>
+     <StructuredType>
         <VarDeclaration Name="a_bool" Type="BOOL"/>
         <VarDeclaration Name="a_byte" Type="BYTE"/>
         <VarDeclaration Name="a_word" Type="WORD"/>
@@ -21,5 +21,5 @@
         <VarDeclaration Name="a_bound_string" Type="STRING[2]"/>
         <VarDeclaration Name="a_wstring" Type="WSTRING"/>
         <VarDeclaration Name="a_bound_wstring" Type="WSTRING[2]"/>
-	</StructuredType>
+     </StructuredType>
 </DataType>
