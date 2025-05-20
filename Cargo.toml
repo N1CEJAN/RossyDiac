@@ -1,5 +1,5 @@
 [package]
-name = "ros2-4diac-converter"
+name = "RossyDiac"
 version = "0.1.0"
 edition = "2021"
 

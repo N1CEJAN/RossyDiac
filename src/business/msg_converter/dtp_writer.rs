@@ -207,11 +207,11 @@ fn char_representation_as_string(char_representation: &CharRepresentation) -> St
     mask_html_special_character(literal)
 }
 
-fn string_representation_as_string(string_representation: &Vec<CharRepresentation>) -> String {
+fn string_representation_as_string(string_representation: &[CharRepresentation]) -> String {
     let literal = format!(
         "'{}'",
         string_representation
-            .into_iter()
+            .iter()
             .map(char_reprensentation_as_string)
             .collect::<Vec<_>>()
             .join("")
@@ -219,11 +219,11 @@ fn string_representation_as_string(string_representation: &Vec<CharRepresentatio
     mask_html_special_character(literal)
 }
 
-fn wstring_representation_as_string(wstring_representation: &Vec<WcharRepresentation>) -> String {
+fn wstring_representation_as_string(wstring_representation: &[WcharRepresentation]) -> String {
     let literal = format!(
         "\"{}\"",
         wstring_representation
-            .into_iter()
+            .iter()
             .map(wchar_representation_as_string)
             .collect::<Vec<_>>()
             .join("")

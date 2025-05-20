@@ -99,10 +99,8 @@ fn convert_to_msg_array_size(var_declaration: &dtp::VarDeclaration) -> Option<ms
         }
         Some(dtp::ArraySize::Capacity(capacity)) => Some(match () {
             _ if is_dynamic_array(var_declaration) => msg::ArraySize::Dynamic,
-            _ if is_bound_dynamic_array(var_declaration) => {
-                msg::ArraySize::BoundDynamic(*capacity as u64)
-            }
-            _ => msg::ArraySize::Capacity(*capacity as u64),
+            _ if is_bound_dynamic_array(var_declaration) => msg::ArraySize::BoundDynamic(*capacity),
+            _ => msg::ArraySize::Capacity(*capacity),
         }),
         _ => None,
     }
@@ -219,10 +217,10 @@ fn convert_initial_value(
                 &v[..convert_default_dynamic_array_count(structured_type, var_declaration)?
                     as usize]
             } else {
-                &v
+                v
             };
             slice
-                .into_iter()
+                .iter()
                 .map(|v| convert_initial_value(structured_type, var_declaration, v))
                 .collect::<Result<Vec<_>>>()
                 .map(msg::InitialValue::Array)?
@@ -286,18 +284,16 @@ fn convert_char_representation(
     }
 }
 
-fn convert_string_representation(string_representation: &Vec<dtp::CharRepresentation>) -> String {
+fn convert_string_representation(string_representation: &[dtp::CharRepresentation]) -> String {
     string_representation
-        .into_iter()
+        .iter()
         .map(char_representation_to_char)
         .collect()
 }
 
-fn convert_wstring_representation(
-    wstring_representation: &Vec<dtp::WcharRepresentation>,
-) -> String {
+fn convert_wstring_representation(wstring_representation: &[dtp::WcharRepresentation]) -> String {
     wstring_representation
-        .into_iter()
+        .iter()
         .map(wchar_representation_to_char)
         .collect()
 }
@@ -333,16 +329,13 @@ fn is_bound_dynamic_array(var_declaration: &dtp::VarDeclaration) -> bool {
 }
 
 fn is_element_counter_of(main: &dtp::VarDeclaration, helper: &dtp::VarDeclaration) -> bool {
-    filter_element_counter(helper)
-        .filter(|attribute| {
-            matches!(
-                attribute.value(),
-                dtp::InitialValue::STRING(reference)
-                    if convert_string_representation(reference) == main.name()
-            )
-        })
-        .next()
-        .is_some()
+    filter_element_counter(helper).any(|attribute| {
+        matches!(
+            attribute.value(),
+            dtp::InitialValue::STRING(reference)
+                if convert_string_representation(reference) == main.name()
+        )
+    })
 }
 
 fn is_element_counter(var_declaration: &dtp::VarDeclaration) -> bool {
@@ -367,9 +360,9 @@ fn is_constant(var_declaration: &dtp::VarDeclaration) -> bool {
         .is_some()
 }
 
-fn filter_element_counter<'a>(
-    var_declaration: &'a dtp::VarDeclaration,
-) -> impl Iterator<Item = &'a dtp::Attribute> {
+fn filter_element_counter(
+    var_declaration: &dtp::VarDeclaration,
+) -> impl Iterator<Item = &dtp::Attribute> {
     filter_attributes(var_declaration, ANNOTATION_NAME_ROS2_ELEMENT_COUNTER)
 }
 
@@ -379,7 +372,7 @@ fn filter_attributes<'a>(
 ) -> impl Iterator<Item = &'a dtp::Attribute> {
     var_declaration
         .attributes()
-        .into_iter()
+        .iter()
         .filter(move |attribute| attribute.name() == attribute_name)
 }
 
@@ -389,7 +382,7 @@ fn convert_default_dynamic_array_count(
 ) -> Result<u64> {
     structured_type
         .var_declarations()
-        .into_iter()
+        .iter()
         .find(|child| is_element_counter_of(var_declaration, child))
         .ok_or("No element counter found")?
         .initial_value()

@@ -82,11 +82,11 @@ Die folgenden Abbildung erklärt die Architektur des Programms anhand der Projek
 │   ├── business/                 # Business-Schicht: Hier ist die Problemlösung implementiert
 │   │   ├── dtp_converter/        # In diesem Modul ist die Konvertierung von DTP-Dateien implementiert
 │   │   │   ├── dtp_reader.rs     # Liest DTP-DTO von DTP-Datei
-│   │   │   ├── dtp_converter.rs  # Konvertiert DTP-DTOs zu MSG-DTOs
+│   │   │   ├── converter  # Konvertiert DTP-DTOs zu MSG-DTOs
 │   │   │   └── msg_writer.rs     # Schreibt MSG-DTO in MSG-Datei
 │   │   ├── msg_converter/        # In diesem Modul ist die Konvertierung von MSG-Dateien implementiert       
 │   │   │   ├── msg_reader.rs     # Liest MSG-DTO von MSG-Datei
-│   │   │   ├── msg_converter.rs  # Konvertiert MSG-DTO zu DTP-DTOs
+│   │   │   ├── converter  # Konvertiert MSG-DTO zu DTP-DTOs
 │   │   │   └── dtp_writer.rs     # Schreibt DTP-DTO in DTP-Datei
 │   │   ├── handler.rs            # Implementiert die API der Problemlösung
 │   │   └── error.rs              # Implementiert die Error-Klasse der Problemlösung 

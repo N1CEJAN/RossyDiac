@@ -131,6 +131,7 @@ impl Attribute {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum BaseType {
     BOOL,
@@ -160,6 +161,7 @@ pub enum ArraySize {
     Indexation(i64, i64),
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum InitialValue {
     BOOL(BoolRepresentation),

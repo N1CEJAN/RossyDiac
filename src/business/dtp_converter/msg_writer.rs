@@ -27,7 +27,7 @@ fn field_as_string(field: &Field) -> String {
     let mut result: String = String::new();
     result.push_str(&base_type_as_string(field.base_type()));
     result.push_str(&array_size_as_string(field.array_size()));
-    result.push_str(" ");
+    result.push(' ');
     result.push_str(field.name());
     result.push_str(&field_type_as_string(
         field.field_type(),
@@ -68,10 +68,10 @@ fn base_type_as_string(base_type: &BaseType) -> String {
         BaseType::Uint64 => "uint64".to_string(),
         BaseType::Char => "char".to_string(),
         BaseType::String(constraint) => constraint
-            .map(|c| format!("string<={}", c.to_string()))
+            .map(|c| format!("string<={c}"))
             .unwrap_or_else(|| "string".to_string()),
         BaseType::Wstring(constraint) => constraint
-            .map(|c| format!("wstring<={}", c.to_string()))
+            .map(|c| format!("wstring<={c}"))
             .unwrap_or_else(|| "wstring".to_string()),
         BaseType::Custom(reference) => match reference {
             Reference::Relative { file } => file.clone(),

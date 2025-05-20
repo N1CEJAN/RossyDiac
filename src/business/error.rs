@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use derive_more::From;
 
 pub type Result<T> = core::result::Result<T, Error>;

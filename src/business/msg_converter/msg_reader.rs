@@ -30,8 +30,7 @@ pub fn read(path_to_source_file: &str) -> Result<StructuredType> {
 fn parse_file_name(path_to_file: &Path) -> Result<String> {
     let file_name = path_to_file
         .file_stem()
-        .map(|os_str| os_str.to_str())
-        .flatten()
+        .and_then(|os_str| os_str.to_str())
         .map(|str| str.to_string())
         .ok_or("Could not read file name from file path")?;
     Ok(file_name)
@@ -164,7 +163,7 @@ fn parse_line_comment(input: &str) -> IResult<&str, String> {
 fn parse_initial_value<'a>(
     base_type: &BaseType,
     optional_array_size: &Option<ArraySize>,
-) -> Box<dyn FnMut(&'a str) -> IResult<&str, InitialValue> + 'a> {
+) -> Box<dyn FnMut(&'a str) -> IResult<&'a str, InitialValue> + 'a> {
     if optional_array_size.is_some() {
         Box::new(map(
             delimited(
@@ -220,11 +219,9 @@ fn dec_int_parser(input: &str) -> IResult<&str, IntRepresentation> {
         |(sign, str): (Option<&str>, &str)| {
             Ok::<IntRepresentation, ParseIntError>(if let Some(sign) = sign {
                 let to_parse = format!("{sign}{str}");
-                let i64 = i64::from_str_radix(&to_parse, 10)?;
-                IntRepresentation::SignedDecimal(i64)
+                IntRepresentation::SignedDecimal(to_parse.parse()?)
             } else {
-                let u64 = u64::from_str_radix(&str, 10)?;
-                IntRepresentation::UnsignedDecimal(u64)
+                IntRepresentation::UnsignedDecimal(str.parse()?)
             })
         },
     )(input)

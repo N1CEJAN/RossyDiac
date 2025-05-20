@@ -1,6 +1,6 @@
-use crate::business::dtp_converter::*;
+use crate::business::dtp_converter::{converter as dtp_converter, *};
 use crate::business::error::Result;
-use crate::business::msg_converter::*;
+use crate::business::msg_converter::{converter as msg_converter, *};
 use log::{debug, info};
 
 pub fn convert_to_dtp(

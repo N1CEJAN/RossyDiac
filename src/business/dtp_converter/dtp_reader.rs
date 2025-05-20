@@ -1,4 +1,4 @@
-use log::{debug, info};
+use log::info;
 use nom::branch::alt;
 use nom::bytes::complete::{is_a, tag, take_till1};
 use nom::character::complete::{digit1, hex_digit1, none_of, oct_digit1, one_of};
@@ -30,7 +30,7 @@ fn parse_data_type(file: std::fs::File) -> Result<DataType> {
 
 fn parse_structured_type(element: &Element) -> Result<StructuredType> {
     let structured_type_element =
-        get_filtered_children(element, |child| &child.name == XML_TAG_STRUCTURED_TYPE)
+        get_filtered_children(element, |child| child.name == XML_TAG_STRUCTURED_TYPE)
             .into_iter()
             .next()
             .ok_or("XML-Tag \"StructuredType\" expected in XML-Tag \"DataType\"")?;
@@ -41,12 +41,10 @@ fn parse_structured_type(element: &Element) -> Result<StructuredType> {
 }
 
 fn parse_var_declarations(element: &Element) -> Result<Vec<VarDeclaration>> {
-    Ok(
-        get_filtered_children(element, |child| &child.name == XML_TAG_VAR_DECLARATION)
-            .into_iter()
-            .map(parse_var_declaration)
-            .collect::<Result<Vec<_>>>()?,
-    )
+    get_filtered_children(element, |child| child.name == XML_TAG_VAR_DECLARATION)
+        .into_iter()
+        .map(parse_var_declaration)
+        .collect::<Result<Vec<_>>>()
 }
 
 fn parse_var_declaration(var_declaration_element: &Element) -> Result<VarDeclaration> {
@@ -161,17 +159,19 @@ fn parse_array_size(input: &str) -> Result<ArraySize> {
         Ok(ArraySize::Indexation(start, end))
     } else {
         let capacity = input.parse().map_err(Error::custom)?;
-        if capacity <= 0 {
+        if capacity == 0 {
             return Err("An arrays capacity is expected to be greater than 0".into());
         }
         Ok(ArraySize::Capacity(capacity))
     }
 }
 
+type InitialValueFn<'a> = dyn FnMut(&str) -> Result<InitialValue> + 'a;
+
 fn parse_initial_value<'a>(
     base_type: &'a BaseType,
     array_size: &'a Option<ArraySize>,
-) -> Box<dyn FnMut(&str) -> Result<InitialValue> + 'a> {
+) -> Box<InitialValueFn<'a>> {
     if array_size.is_some() {
         Box::new(move |str| {
             let trimmmed = str.trim();
@@ -417,10 +417,10 @@ fn dec_int_parser(input: &str) -> IResult<&str, IntRepresentation> {
             let cleaned_str = str.replace("_", "");
             Ok::<IntRepresentation, ParseIntError>(if let Some(sign) = sign {
                 let to_parse = format!("{sign}{cleaned_str}");
-                let i64 = i64::from_str_radix(&to_parse, 10)?;
+                let i64 = to_parse.parse::<i64>()?;
                 IntRepresentation::SignedDecimal(i64)
             } else {
-                let u64 = u64::from_str_radix(&cleaned_str, 10)?;
+                let u64 = cleaned_str.parse::<u64>()?;
                 IntRepresentation::UnsignedDecimal(u64)
             })
         },

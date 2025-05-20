@@ -16,12 +16,12 @@ use nom::combinator::{map_res, opt, recognize};
 use nom::sequence::{delimited, tuple};
 use nom::Finish;
 
-const ELEMENT_COUNTER_SUFFIX: &'static str = "_element_counter";
+const ELEMENT_COUNTER_SUFFIX: &str = "_element_counter";
 
 pub fn convert(package_name: &str, structured_type: &msg::StructuredType) -> Result<dtp::DataType> {
     let name = convert_structured_type_name(package_name, structured_type.name());
     let mut structured_type_children = Vec::new();
-    for field in structured_type.fields().into_iter() {
+    for field in structured_type.fields().iter() {
         let children = &mut convert_field(package_name, field)?;
         structured_type_children.append(children)
     }
@@ -69,7 +69,7 @@ fn convert_field(package_name: &str, field: &msg::Field) -> Result<Vec<dtp::VarD
                     field
                         .name()
                         .chars()
-                        .map(|char| dtp::CharRepresentation::Char(char))
+                        .map(dtp::CharRepresentation::Char)
                         .collect::<Vec<_>>(),
                 ),
                 None,
@@ -102,8 +102,8 @@ fn convert_to_var_base_type(package_name: &str, field: &msg::Field) -> dtp::Base
         msg::BaseType::Float32 => dtp::BaseType::REAL,
         msg::BaseType::Float64 => dtp::BaseType::LREAL,
         msg::BaseType::Char => dtp::BaseType::CHAR,
-        msg::BaseType::String(opt_bound) => dtp::BaseType::STRING(opt_bound.clone()),
-        msg::BaseType::Wstring(opt_bound) => dtp::BaseType::WSTRING(opt_bound.clone()),
+        msg::BaseType::String(opt_bound) => dtp::BaseType::STRING(*opt_bound),
+        msg::BaseType::Wstring(opt_bound) => dtp::BaseType::WSTRING(*opt_bound),
         msg::BaseType::Custom(reference) => {
             dtp::BaseType::Custom(convert_reference(package_name, reference))
         }
@@ -174,7 +174,7 @@ fn convert_to_attributes(field: &msg::Field) -> Result<Vec<dtp::Attribute>> {
         attributes.push(dtp::Attribute::new(
             ANNOTATION_NAME_ROS2_BOUND_DYNAMIC_ARRAY.to_owned(),
             dtp::BaseType::ULINT,
-            dtp::InitialValue::ULINT(dtp::IntRepresentation::UnsignedDecimal(*bound as u64)),
+            dtp::InitialValue::ULINT(dtp::IntRepresentation::UnsignedDecimal(*bound)),
             None,
         ))
     }
@@ -261,13 +261,13 @@ fn convert_initial_value(
         msg::InitialValue::String(string) => dtp::InitialValue::STRING(
             string
                 .chars()
-                .map(|char| dtp::CharRepresentation::Char(char))
+                .map(dtp::CharRepresentation::Char)
                 .collect::<Vec<_>>(),
         ),
         msg::InitialValue::Wstring(string) => dtp::InitialValue::WSTRING(
             string
                 .chars()
-                .map(|char| dtp::WcharRepresentation::Wchar(char))
+                .map(dtp::WcharRepresentation::Wchar)
                 .collect::<Vec<_>>(),
         ),
         msg::InitialValue::Array(v) => {
@@ -441,7 +441,7 @@ fn get_start_index(field: &msg::Field) -> Result<i64> {
                 .find(format!("@{ANNOTATION_NAME_IEC61499_START_INDEX}(").as_str())
                 .map(|pos| &comment[pos..])
         })
-        .map_or(Ok(0), |input| parse_start_index(input))
+        .map_or(Ok(0), parse_start_index)
 }
 
 fn parse_start_index(input: &str) -> Result<i64> {
@@ -451,7 +451,7 @@ fn parse_start_index(input: &str) -> Result<i64> {
             recognize(tuple((opt(alt((tag("-"), tag("+")))), digit1))),
             tag(")"),
         ),
-        |str: &str| i64::from_str_radix(str, 10),
+        |str: &str| str.parse::<i64>(),
     )(input)
     .map_err(|e: nom::Err<nom::error::Error<&str>>| e.to_owned())
     .finish()?
